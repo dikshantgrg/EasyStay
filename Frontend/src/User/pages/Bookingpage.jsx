@@ -152,7 +152,8 @@ const BookingPage = () => {
   
       console.log("Booking successful:", response.data);
       setBookingSuccess(true);
-      setTimeout(() => navigate("/booking-confirmation"), 2000);
+      window.location.href = response.data.paymentUrl;
+      // setTimeout(() => navigate("/booking-confirmation"), 2000);
     } catch (error) {
       console.error("Booking failed:", error.response?.data || error.message);
       alert(

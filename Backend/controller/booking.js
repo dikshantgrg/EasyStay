@@ -2,8 +2,10 @@ const Booking = require("../model/Booking");
 const User = require("../model/User");
 const Property = require("../model/Property");
 const moment = require("moment");
+const Payment = require("../model/Payment");
+const paymentController = require("./paymentController");
 
-const makeBooking = async (req, res) => {
+const makeBooking = async (req, res, next ) => {
   try {
     const {
       propertyId,
@@ -67,12 +69,39 @@ const makeBooking = async (req, res) => {
 
     await newBooking.save();
 
+    const newPayment = new Payment({
+      bookingId,
+      userId,
+      amount: totalPrice * 100, // Convert to paisa for Khalti
+      paymentStatus: "pending",
+    });
+    await newPayment.save();
+
+    // Initiate payment
+    const paymentResponse = await paymentController.initiateKhaltiPayment({
+      bookingId,
+      totalPrice,
+      user,
+    });
+
+    newPayment.paymentIdx = paymentResponse.pidx;
+    await newPayment.save();
+
     res.status(201).json({
       message: "Booking created successfully.",
       booking: newBooking,
+      paymentUrl: paymentResponse.paymentUrl,
     });
   } catch (err) {
-    console.error("Error making booking:", err.message);
+    console.log("Error making booking:", err);
+    if (err.message.includes("Khalti Initiation Failed") && bookingId) {
+      await Booking.deleteOne({ bookingId });
+      await Payment.deleteOne({ bookingId });
+      return res.status(400).json({
+        error: "Failed to initiate payment. Booking canceled.",
+        details: err.message,
+      });
+    }
     res.status(500).json({ error: "Server error.", details: err.message });
   }
 };
@@ -141,7 +170,7 @@ const getGuestsForHost = async (req, res) => {
         filter = {
           hostId: hostId,
           checkOut: { $lte: currentDate },
-          status: { $ne: "completed" } // Exclude completed bookings
+          status: { $ne: "completed" }, // Exclude completed bookings
         };
         break;
 
@@ -150,7 +179,7 @@ const getGuestsForHost = async (req, res) => {
           hostId: hostId,
           checkIn: { $lte: currentDate },
           checkOut: { $gte: currentDate },
-          status: { $ne: "completed" }
+          status: { $ne: "completed" },
         };
         break;
 
@@ -158,7 +187,7 @@ const getGuestsForHost = async (req, res) => {
         filter = {
           hostId: hostId,
           checkIn: { $gt: currentDate, $lte: nextWeek },
-          status: { $ne: "completed" }
+          status: { $ne: "completed" },
         };
         break;
 
@@ -166,14 +195,14 @@ const getGuestsForHost = async (req, res) => {
         filter = {
           hostId: hostId,
           checkIn: { $gt: nextWeek },
-          status: { $ne: "completed" }
+          status: { $ne: "completed" },
         };
         break;
 
       case "Completed":
         filter = {
           hostId: hostId,
-          status: "completed"
+          status: "completed",
         };
         break;
 
@@ -197,7 +226,7 @@ const getGuestsForHost = async (req, res) => {
       currentGuest: [],
       arrivingSoon: [],
       upcoming: [],
-      completed: []
+      completed: [],
     };
 
     // Sort data into categories

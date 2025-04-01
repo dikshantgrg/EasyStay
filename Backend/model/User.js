@@ -54,22 +54,25 @@ const UserSchema = new Schema({
     required: false,
     trim: true,
   },
-  
+
   hostApprovalStatus: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ["pending", "approved", "rejected"],
   },
 
-
+  profileImage: {
+    type: String, // Will store the URL or path to the image
+    required: false,
+  },
   govtId: {
     type: {
       type: String,
-      enum: ['driverLicense', 'passport', 'citizenship', 'other'],
+      enum: ["driverLicense", "passport", "citizenship", "other"],
       required: false,
     },
-    
+
     front: {
-      type: String, 
+      type: String,
       required: false,
     },
     back: {

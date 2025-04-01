@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const handleServerError = require("./middleware/handleServerError.js");
@@ -7,6 +8,7 @@ const propertyRoutes = require("./routes/property.js");
 const userRoutes = require("./routes/user.js");
 const bookingRoutes = require("./routes/booking.js");
 const reviewRoutes = require("./routes/Review.js");
+const payemtRoutes = require("./routes/payment.js");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
 const { startStatusUpdateScheduler } = require("./controller/booking.js");
@@ -22,6 +24,7 @@ app.use(propertyRoutes);
 app.use(userRoutes);
 app.use(bookingRoutes);
 app.use(reviewRoutes);
+app.use(payemtRoutes);
 
 startStatusUpdateScheduler();
 // const bcrypt = require('bcrypt');
@@ -31,7 +34,7 @@ startStatusUpdateScheduler();
 app.use((req, res) => {
   try {
     res.status(404).send({ msg: "Resource not found" });
-    console.log(res)
+    console.log(res);
   } catch (error) {
     console.log(error);
   }

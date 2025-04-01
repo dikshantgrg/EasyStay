@@ -20,6 +20,9 @@ import HostBookingDetail from "./Host/Pages/HostBookingDetail";
 import ToReviewPage from "./User/pages/ToReviewPage";
 import PropertyReview from "./Host/Pages/PropertyReview";
 import PropertyFilterPage from "./User/Components/PropertyFilterPage";
+import PaymentSuccess from "./User/Components/PaymentSuccess";
+import PaymentFailure from "./User/Components/PaymentFailure";
+import Profile from "./User/pages/Profile";
 
 function App() {
   const dispatch = useDispatch();
@@ -50,16 +53,19 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   return (
     <>
-    {/* <PropertyReview /> */}
+      {/* <PropertyReview /> */}
       <Navbar />
-     
+      
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/property/:id" element={<PropertyDetails />} />
         <Route path="/booking/:id" element={<BookingPage />} />
         <Route path="/properties" element={<PropertyFilterPage />} />
+        <Route path="/profile" element={<Profile />} />
         {/* User Protected Routes */}
+
+        
         <Route
           path="/becomeahost"
           element={
@@ -84,7 +90,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-          <Route
+        <Route
           path="/bookings/review"
           element={
             <ProtectedRoute>
@@ -118,7 +124,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-          <Route
+        <Route
           path="/host/property/reviews/:id"
           element={
             <ProtectedRoute>
@@ -143,7 +149,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route path="/booking/success" element={<PaymentSuccess />} />
+        <Route path="/booking/failure" element={<PaymentFailure />} />
         {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
