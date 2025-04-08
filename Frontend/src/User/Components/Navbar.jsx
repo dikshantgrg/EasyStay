@@ -9,7 +9,7 @@ import {
   resetHostMode,
 } from "../../features/user/hostModeSlice";
 import SignupModal from "./SignUPModal";
-import SearchBar from "../Components/SearchBar";
+
 
 const Navbar = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -107,7 +107,7 @@ const Navbar = () => {
             {/* Authentication/Account Section */}
             <div>
               {user ? (
-                <DropdownMenu
+                <DropdownMenu className="z-50"
                   isOpen={isDropdownOpen}
                   toggleDropdown={() => setIsDropdownOpen((prev) => !prev)}
                   handleLogout={handleLogout}

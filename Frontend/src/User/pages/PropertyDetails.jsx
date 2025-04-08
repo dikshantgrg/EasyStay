@@ -30,15 +30,32 @@ import Footer from "../Components/Footer";
 import ImageGalleryModal from "../Components/ImageGalleryModal";
 import ReviewListModal from "../Components/ReviewListModal";
 import AmenitiesDisplay from "../Components/AmenitiesDisplay";
-import ReviewCard from "../Components/ReviewCard";
+import moment from "moment";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { format, startOfDay } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
 // New ReviewModal Component
 
 const PropertyDetails = () => {
   const { id } = useParams();
   const [property, setProperty] = useState(null);
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
+
+  const today = startOfDay(new Date()); // Ensures date starts at midnight local time
+  const tomorrow = startOfDay(new Date());
+  tomorrow.setDate(today.getDate() + 1);
+
+  const [dateRange, setDateRange] = useState({
+    from: today,
+    to: tomorrow,
+  });
   const [guests, setGuests] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [galleryModalOpen, setGalleryModalOpen] = useState(false);
@@ -66,21 +83,14 @@ const PropertyDetails = () => {
   }, [id]);
   console.log(property);
 
-  useEffect(() => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+  // useEffect(() => {
+  //   const today = new Date();
+  //   const tomorrow = new Date(today);
+  //   tomorrow.setDate(today.getDate() + 1);
 
-    const formatDate = (date) => {
-      const day = String(date.getDate()).padStart(2, "0");
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const year = date.getFullYear();
-      return `${year}-${month}-${day}`;
-    };
-
-    setCheckIn(formatDate(today));
-    setCheckOut(formatDate(tomorrow));
-  }, []);
+  //   // setCheckIn(formatDate(today));
+  //   // setCheckOut(formatDate(tomorrow));
+  // }, []);
 
   const amenities = [
     { icon: IoIosWifi, label: "High-speed Wi-Fi" },
@@ -118,13 +128,59 @@ const PropertyDetails = () => {
       setCurrentSlide((prev) => prev - 1);
     }
   };
+  const handleDateChange = (range) => {
+    if (range?.from) {
+      let newCheckOut = range.to;
 
+      // Ensure check-out date is always after check-in
+      if (!newCheckOut || newCheckOut <= range.from) {
+        newCheckOut = new Date(range.from);
+        newCheckOut.setDate(range.from.getDate() + 1);
+      }
+
+      setDateRange({ from: range.from, to: newCheckOut });
+    }
+  };
   const handleNext = () => {
     if (currentSlide < totalSlides) {
       carouselRef.current?.next();
       setCurrentSlide((prev) => prev + 1);
     }
   };
+
+  const checkAvailability = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:8000/api/check-availability",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          params: {
+            propertyId: id,
+            checkIn: moment(dateRange.from).format("YYYY-MM-DD"),
+            checkOut: moment(dateRange.to).format("YYYY-MM-DD"),
+          },
+        }
+      );
+     
+      if (response.data.available) {
+        navigate(`/booking/${id}`, {
+          state: {
+            checkIn: moment(dateRange.from).format("YYYY-MM-DD"),
+            checkOut: moment(dateRange.to).format("YYYY-MM-DD"),
+            guests,
+          },
+        });
+      } else {
+        alert("This property is already booked for these dates.");
+      }
+    } catch (error) {
+      console.error("Error checking availability:", error);
+      alert("An error occurred while checking availability.");
+    }
+  };
+
   return (
     <div className="bg-gray-100">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -264,33 +320,65 @@ const PropertyDetails = () => {
           <div className="w-full lg:w-96 xl:w-[420px]">
             <div className="sticky top-8 bg-white rounded-xl shadow-xl p-6">
               <div className="mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-2xl font-bold">{property.price}</span>
+                <div className="space-x-2 justify-between items-center mb-4">
+                  <span className="text-2xl font-bold">
+                    NPR{property.price}
+                  </span>
                   <span className="text-gray-600">per night</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Check-in
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      value={checkIn}
-                      onChange={(e) => setCheckIn(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Check-out
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      value={checkOut}
-                      onChange={(e) => setCheckOut(e.target.value)}
-                    />
-                  </div>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <span className="flex items-center">
+                      <CalendarIcon className="w-4 h-4 mr-2 text-gray-500" />
+                      Check in & Check out
+                    </span>
+                  </label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full h-14 justify-between px-4 border-gray-300 hover:border-gray-400",
+                          "text-base font-medium rounded-lg",
+                          dateRange.from &&
+                            "bg-gray-50 border-blue-500 hover:border-blue-600"
+                        )}
+                      >
+                        <div className="grid grid-cols-2 gap-x-4 text-left flex-1">
+                          <div>
+                            <div className="text-xs font-normal text-gray-500">
+                              Check in
+                            </div>
+                            {moment(dateRange.from).format("MMM D")}
+                          </div>
+                          <div>
+                            <div className="text-xs font-normal text-gray-500">
+                              Check out
+                            </div>
+                            {moment(dateRange.to).format("MMM D")}
+                          </div>
+                        </div>
+                        <CalendarIcon className="ml-2 h-5 w-5 text-gray-500" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl border-0">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange.from}
+                        selected={{ from: dateRange.from, to: dateRange.to }} // ✅ Ensures default dates are selected
+                        onSelect={handleDateChange}
+                        numberOfMonths={2}
+                        fromDate={today} // Prevents past date selection
+                        classNames={{
+                          day_selected:
+                            "bg-blue-600 text-white hover:bg-blue-700", // ✅ Ensures selected dates are properly highlighted
+                          head: "text-gray-600 font-medium",
+                          day_today: "bg-gray-200 font-semibold", // ✅ Makes today visible without being fully white
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -310,11 +398,8 @@ const PropertyDetails = () => {
                 </div>
                 <button
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg"
-                  onClick={() =>
-                    navigate(`/booking/${id}`, {
-                      state: { checkIn, checkOut, guests },
-                    })
-                  }
+                  onClick={checkAvailability}
+                  disabled={!dateRange.from || !dateRange.to}
                 >
                   Reserve
                 </button>
@@ -434,7 +519,7 @@ const PropertyDetails = () => {
                 ref={carouselRef}
                 itemClass="px-2"
                 containerClass="carousel-container"
-                slidesToSlide={1} 
+                slidesToSlide={1}
                 afterChange={(previousSlide, { currentSlide }) => {
                   setCurrentSlide(currentSlide);
                 }}
@@ -507,18 +592,17 @@ const PropertyDetails = () => {
                 </button>
               </div>
             </div>
-
           </div>
-            {property.reviewStats.totalReviews > 3 && (
-              <div className="mt-4 ">
-                <button
-                  onClick={() => setShowReviewModal(true)}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm md:text-base"
-                >
-                  Show all {property.reviewStats.totalReviews} reviews
-                </button>
-              </div>
-            )}
+          {property.reviewStats.totalReviews > 3 && (
+            <div className="mt-4 ">
+              <button
+                onClick={() => setShowReviewModal(true)}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm md:text-base"
+              >
+                Show all {property.reviewStats.totalReviews} reviews
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Review Modal */}

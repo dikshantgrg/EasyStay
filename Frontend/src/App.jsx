@@ -149,7 +149,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/booking/success" element={<PaymentSuccess />} />
+        <Route path="/booking/success/" element={<PaymentSuccess />} />
         <Route path="/booking/failure" element={<PaymentFailure />} />
         {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/" />} />

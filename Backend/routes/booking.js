@@ -5,21 +5,27 @@ const {
   getSingleBooking,
   getGuestsForHost,
   getUserCompletedBooking,
+  checkBookingAvailability,
 } = require("../controller/booking");
 const { checkAuthorization } = require("../middleware/auth");
 const router = express.Router();
 
-// for user 
+// for user
+router.get(
+  "/api/check-availability",
+  checkAuthorization,
+  checkBookingAvailability
+);
 router.post("/api/make-booking", checkAuthorization, makeBooking);
 router.get("/api/user-booking", checkAuthorization, getUserBooking);
 router.get("/api/booking/:bookingId", checkAuthorization, getSingleBooking);
-router.get("/api/completed-booking", checkAuthorization,  getUserCompletedBooking);
+router.get(
+  "/api/completed-booking",
+  checkAuthorization,
+  getUserCompletedBooking
+);
 
-
-
-
-//for host 
+//for host
 router.get("/api/host-booking/:category", checkAuthorization, getGuestsForHost);
-
 
 module.exports = router;

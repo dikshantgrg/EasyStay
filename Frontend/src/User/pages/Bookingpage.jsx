@@ -58,7 +58,7 @@ const BookingPage = () => {
     let tempErrors = {};
    console.log(user);
     // Phone validation (only if user doesn't have a phone number)
-    if (user?.phoneNumber) {
+    if (!user?.phoneNumber) {
       if (!bookingInfo.phone) {
         tempErrors.phone = "Phone number is required";
       } else if (!/^\+?[1-9]\d{1,14}$/.test(bookingInfo.phone)) {
@@ -197,7 +197,7 @@ const BookingPage = () => {
 
         <div className="flex flex-col lg:flex-row gap-8">
           <form onSubmit={handleSubmit} className="flex-1" noValidate>
-                {user?.phoneNumber && (
+                {!user?.phoneNumber && (
             <div className="bg-white rounded-xl border-2 border-gray-200 p-6 mb-6">
               <h2 className="text-xl font-bold mb-6">Required information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

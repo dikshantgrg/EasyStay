@@ -1,76 +1,175 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Camera, X } from "lucide-react";
+import { jwtDecode } from "jwt-decode";
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "@/features/user/userSlice";
 
 const Profile = () => {
   const [userData, setUserData] = useState({
-    FirstName: '',
-    LastName: '',
-    Email: '',
-    phoneNumber: '',
-    profileImage: ''
+    FirstName: "",
+    LastName: "",
+    Email: "",
+    phoneNumber: "",
+    profileImage: "",
   });
   const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [isPersonalEditing, setIsPersonalEditing] = useState(false);
+  const [isContactEditing, setIsContactEditing] = useState(false);
+
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.user.user);
 
   useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  const fetchUserData = async () => {
-    try {
-      const response = await axios.get('/api/user/profile', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    if (user) {
+      setUserData({
+        FirstName: user.FirstName || "",
+        LastName: user.LastName || "",
+        Email: user.Email || "",
+        phoneNumber: user.phoneNumber || "",
+        profileImage: user.profileImage || "",
       });
-      setUserData(response.data);
-    } catch (err) {
-      setError('Failed to load profile');
     }
-  };
+  }, [user]);
 
   const handleInputChange = (e) => {
-    setUserData({ ...userData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setUserData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
 
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleCancelImage = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+  };
+
+  const handleImageSubmit = async () => {
+    if (!selectedFile) return;
+
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const formData = new FormData();
-      formData.append('FirstName', userData.FirstName);
-      formData.append('LastName', userData.LastName);
-      formData.append('Email', userData.Email);
-      formData.append('phoneNumber', userData.phoneNumber);
-      if (selectedFile) {
-        formData.append('profileImage', selectedFile);
+      formData.append("profileImage", selectedFile);
+
+      const response = await axios.put(
+        "http://localhost:8000/api/profile/image",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      setUserData((prev) => ({
+        ...prev,
+        profileImage: response.data.profileImage,
+      }));
+
+      const newToken = response.data.token;
+      if (newToken) {
+        localStorage.setItem("token", newToken);
       }
 
-      const response = await axios.put('/api/user/profile', formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      setUserData(response.data);
       setSelectedFile(null);
+      setPreviewUrl(null);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
     } catch (err) {
-      setError('Failed to update profile');
+      setError(err.response?.data?.message || "Failed to update profile image");
+      console.error("Image upload error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSubmit = async (e, section) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await axios.put(
+        "http://localhost:8000/api/update/user",
+        {
+          FirstName: userData.FirstName,
+          LastName: userData.LastName,
+          Email: userData.Email,
+          phoneNumber: userData.phoneNumber,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setUserData(response.data.user);
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+      }
+      const token = response.data.token;
+      const user = jwtDecode(token);
+      dispatch(setUser(user));
+
+      if (section === "personal") setIsPersonalEditing(false);
+      if (section === "contact") setIsContactEditing(false);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update profile");
+      console.error("Profile update error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getImageSource = () => {
+    if (previewUrl) {
+      return { type: "image", src: previewUrl };
+    }
+    if (userData.profileImage) {
+      return {
+        type: "image",
+        src: `http://localhost:8000/${userData.profileImage}`,
+      };
+    }
+    const initial = userData.FirstName
+      ? userData.FirstName.charAt(0).toUpperCase()
+      : "G";
+    return { type: "initial", src: initial };
+  };
+
+  const imageData = getImageSource();
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <h2 className="text-3xl font-bold text-gray-800 mb-2">Profile Settings</h2>
-      
+      <h2 className="text-3xl font-bold text-gray-800 mb-2">
+        Profile Settings
+      </h2>
+
       {error && (
         <div className="bg-red-50 p-4 rounded-xl border border-red-100 text-red-700 text-sm">
           {error}
@@ -78,34 +177,59 @@ const Profile = () => {
       )}
 
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Profile Image Card */}
         <div className="md:col-span-1">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
-                <img 
-                  src={'default-profile-image.jpg'} 
-                  alt="Profile" 
-                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
-                />
+                {imageData.type === "image" ? (
+                  <img
+                    src={imageData.src}
+                    alt="Profile"
+                    className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg -z-50"
+                    onError={(e) => {
+                      console.error("Image load failed:", e.target.src);
+                      e.target.src = "default-profile-image.jpg";
+                    }}
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-gray-200 border-4 border-white shadow-lg flex items-center justify-center text-4xl font-bold text-gray-600">
+                    {imageData.src}
+                  </div>
+                )}
                 <label className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full shadow-sm hover:bg-blue-600 transition-colors cursor-pointer">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
+                  <Input
+                    type="file"
+                    accept="image/*"
                     onChange={handleFileChange}
+                    disabled={loading}
                     className="hidden"
                   />
-                  <svg 
-                    className="w-5 h-5 text-white" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+                  {loading ? (
+                    <span className="w-5 h-5 text-white animate-spin">⌛</span>
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
                 </label>
               </div>
+              {selectedFile && (
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={handleImageSubmit}
+                    disabled={loading}
+                    className="mt-2"
+                  >
+                    {loading ? "Uploading..." : "Upload Image"}
+                  </Button>
+                  <Button
+                    onClick={handleCancelImage}
+                    disabled={loading}
+                    variant="outline"
+                    className="mt-2"
+                  >
+                    <X className="w-4 h-4 mr-2" /> Cancel
+                  </Button>
+                </div>
+              )}
               <p className="text-xs text-gray-500 text-center">
                 Allowed formats: JPEG, PNG up to 5MB
               </p>
@@ -113,80 +237,124 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Form Section */}
-        <div className="md:col-span-2 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Info Card */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
+        <div className="md:col-span-2 space-y-3">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Personal Information
+              </h3>
+              <Button
+                variant="outline"
+                onClick={() => setIsPersonalEditing(!isPersonalEditing)}
+                disabled={loading}
+              >
+                {isPersonalEditing ? "Cancel" : "Edit"}
+              </Button>
+            </div>
+            <form onSubmit={(e) => handleSubmit(e, "personal")}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">First Name</label>
-                  <input
-                    type="text"
-                    name="FirstName"
-                    value={userData.FirstName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="FirstName">First Name</Label>
+                  {isPersonalEditing ? (
+                    <Input
+                      id="FirstName"
+                      name="FirstName"
+                      value={userData.FirstName}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <p className="text-gray-600">{userData.FirstName || "Not set"}</p>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">Last Name</label>
-                  <input
-                    type="text"
-                    name="LastName"
-                    value={userData.LastName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="LastName">Last Name</Label>
+                  {isPersonalEditing ? (
+                    <Input
+                      id="LastName"
+                      name="LastName"
+                      value={userData.LastName}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <p className="text-gray-600">{userData.LastName || "Not set"}</p>
+                  )}
                 </div>
+                {isPersonalEditing && (
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-auto px-3 py-1"
+                  >
+                    {loading ? "Updating..." : "Save Changes"}
+                  </Button>
+                )}
               </div>
-            </div>
+            </form>
+          </div>
 
-            {/* Contact Info Card */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Contact Information</h3>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Contact Information
+              </h3>
+              <Button
+                variant="outline"
+                onClick={() => setIsContactEditing(!isContactEditing)}
+                disabled={loading}
+              >
+                {isContactEditing ? "Cancel" : "Edit"}
+              </Button>
+            </div>
+            <form onSubmit={(e) => handleSubmit(e, "contact")}>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">Email Address</label>
-                  <input
-                    type="email"
-                    name="Email"
-                    value={userData.Email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="Email">Email Address</Label>
+                  {isContactEditing ? (
+                    <Input
+                      id="Email"
+                      name="Email"
+                      type="email"
+                      value={userData.Email}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <p className="text-gray-600">{userData.Email || "Not set"}</p>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">Phone Number</label>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={userData.phoneNumber}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  {isContactEditing ? (
+                    <Input
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      type="tel"
+                      value={userData.phoneNumber}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <p className="text-gray-600">{userData.phoneNumber || "Not set"}</p>
+                  )}
                 </div>
+                {isContactEditing && (
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-auto px-3 py-1"
+                  >
+                    {loading ? "Updating..." : "Save Changes"}
+                  </Button>
+                )}
               </div>
-            </div>
-
-            {/* Submit Button */}
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Updating...' : 'Save Changes'}
-            </button>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </div>
   );
-
 };
 
 export default Profile;

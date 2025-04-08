@@ -19,6 +19,9 @@ app.use(fileUpload());
 app.use(express.static("uploads"));
 app.use(express.static("uploads/properties"));
 app.use(express.static("uploads/govt_ids"));
+app.use(express.static("uploads/ProfileImage"));
+
+
 app.use(authRoutes);
 app.use(propertyRoutes);
 app.use(userRoutes);

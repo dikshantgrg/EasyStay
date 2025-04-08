@@ -26,6 +26,8 @@ router.put("/api/edit/property/:id", editProperty);
 router.post("/api/upload-images/:propertyId", uploadImage);
 router.delete("/api/delete/:propertyId", deleteImage);
 
+
+
 // for admin
 
 router.get("/api/admin/pending-approval", pendingApproval);

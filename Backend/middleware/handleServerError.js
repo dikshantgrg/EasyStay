@@ -1,7 +1,7 @@
 const handleServerError = (error, req, res, next) => {
-  console.error(error); // Log the error for debugging
+  console.error(error); 
 
-  // Handle Joi validation errors
+ 
   if (error.isJoi) {
     return res.status(400).send({
       msg: "Validation error (Joi)",

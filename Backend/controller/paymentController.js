@@ -1,3 +1,4 @@
+require("dotenv").config();
 const axios = require("axios");
 const Payment = require("../model/Payment");
 
@@ -8,14 +9,14 @@ const initiateKhaltiPayment = async ({ bookingId, totalPrice, user }) => {
   try {
     console.log("khaltiSecretKey", khaltiSecretKey);
     const paymentData = {
-      return_url: "http://localhost:8000/api/payment/callback", // Replace with your callback URL
+      return_url: "http://localhost:5173/booking/success/", // Replace with your callback URL
       website_url: "http://localhost:5173/", // Replace with your website URL
       amount: totalPrice * 100, // Amount in paisa
       purchase_order_id: bookingId,
       purchase_order_name: "Property Booking",
       customer_info: {
-        name: user.name || "Guest",
-        email: user.email || "guest@example.com",
+        name: `${user.FirstName} ${user.LastName} ` || "Guest",
+        email: user.Email || "guest@example.com",
         phone: user.phoneNumber || "",
       },
     };
@@ -42,8 +43,6 @@ const verifyKhaltiPayment = async (req, res) => {
   try {
     const { pidx, transaction_id, amount, purchase_order_id } = req.query;
 
-
-
     const verifyResponse = await axios.post(
       `${KhaltiURL}/lookup/`,
       { pidx },
@@ -67,12 +66,26 @@ const verifyKhaltiPayment = async (req, res) => {
         },
         { new: true }
       );
-    
+
       if (!payment) {
         return res.status(404).json({ error: "Payment record not found." });
       }
-    
+
       res.redirect("http://localhost:5173/booking/success");
+    } else if (paymentStatus === "User canceled") {
+      // Note: Khalti uses "User canceled" not "User Cancelled"
+      const payment = await Payment.findOne({ bookingId: purchase_order_id });
+      const booking = await Booking.findOne({ _id: purchase_order_id });
+
+      if (payment && booking) {
+        await Payment.deleteOne({ bookingId: purchase_order_id });
+        await Booking.deleteOne({ _id: purchase_order_id });
+        console.log(
+          `Payment and booking deleted for bookingId: ${purchase_order_id} due to user cancellation`
+        );
+      }
+
+      res.redirect("http://localhost:5173/booking/failure");
     } else {
       await Payment.findOneAndUpdate(
         { bookingId: purchase_order_id },

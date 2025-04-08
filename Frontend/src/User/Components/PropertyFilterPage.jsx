@@ -256,8 +256,8 @@ const PropertyFilterPage = () => {
   };
 
   return (
-    <div className="bg-gray-50">
-      <div className="p-5 flex items-center justify-center bg-muted">
+    <div className="bg-gray-50 w-full">
+      <div className="p-5   flex items-center justify-center max-w-7xl mx-auto">
         <SearchBar
           mode="full"
           onSearch={handleSearchChange}

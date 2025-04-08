@@ -112,7 +112,7 @@ const AmenitiesDisplay = ({ amenities }) => {
   return (
     <div>
       <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-6">Amenities</h2>
+      
         {formattedAmenities.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

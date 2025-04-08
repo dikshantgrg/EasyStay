@@ -5,7 +5,41 @@ const moment = require("moment");
 const Payment = require("../model/Payment");
 const paymentController = require("./paymentController");
 
-const makeBooking = async (req, res, next ) => {
+const checkBookingAvailability = async (req, res, next) => {
+  try {
+    const { propertyId, checkIn, checkOut } = req.query;
+
+    if (!propertyId || !checkIn || !checkOut) {
+      return res.status(400).json({ error: "Missing required parameters" });
+    }
+
+    const checkInDate = moment(checkIn, "YYYY-MM-DD").toDate();
+    const checkOutDate = moment(checkOut, "YYYY-MM-DD").toDate();
+
+    const existingBooking = await Booking.findOne({
+      propertyId,
+      status: { $nin: ["completed"] },
+      $or: [{ checkIn: { $lt: checkOutDate }, checkOut: { $gt: checkInDate } }],
+    });
+
+    if (existingBooking) {
+      return res.json({
+        available: false,
+        message: "Property is already booked for these dates.",
+      });
+    }
+
+    return res.json({
+      available: true,
+      message: "Property is available for booking.",
+    });
+  } catch (error) {
+    console.error("Error checking availability:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const makeBooking = async (req, res, next) => {
   try {
     const {
       propertyId,
@@ -355,4 +389,5 @@ module.exports = {
   getUserCompletedBooking,
   updateBookingStatus,
   startStatusUpdateScheduler,
+  checkBookingAvailability,
 };
