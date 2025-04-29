@@ -84,7 +84,7 @@ const Step5 = ({ formData, handleChange, errors }) => {
                   Click to upload or drag and drop
                 </span>
                 <span className="block text-xs text-gray-500">
-                  PNG, JPG, JPEG up to 10MB
+                  PNG, JPG, JPEG 
                 </span>
               </label>
               <input

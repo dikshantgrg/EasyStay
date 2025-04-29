@@ -5,6 +5,7 @@ const path = require("path");
 const User = require("../model/User");
 const Review = require("../model/Review");
 const Booking = require("../model/Booking");
+const { ObjectId } = require("mongoose").Types;
 
 const getSingleProperty = async (req, res, next) => {
   try {
@@ -28,7 +29,6 @@ const getSingleProperty = async (req, res, next) => {
         ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
         : 0;
 
-    // Prepare the property object with review stats
     const propertyData = {
       ...property.toObject(),
       reviewStats: {
@@ -82,12 +82,12 @@ const createProperty = async (req, res, next) => {
   let imagePaths = [];
 
   // Process address details first
-  const { street, city, province_id, zipCode } = req.body;
-
+  const { street, city, province_name, zipCode } = req.body;
+  console.log(province_name);
   const address = new Address({
     street,
     city,
-    province_id,
+    province_name,
     zipCode,
   });
 
@@ -99,7 +99,11 @@ const createProperty = async (req, res, next) => {
     const uploadPromises = imageFiles.map((file) => {
       return new Promise((resolve, reject) => {
         const fileName = Date.now() + "-" + file.name; // Avoid name collisions
-        const destination = path.join(path.resolve(), "uploads", fileName);
+        const destination = path.join(
+          path.resolve(),
+          "uploads/properties",
+          fileName
+        );
 
         file.mv(destination, (err) => {
           if (err) {
@@ -122,7 +126,11 @@ const createProperty = async (req, res, next) => {
       : [amenities].filter(Boolean);
 
     // Now that all images are uploaded, create the property
+    const count = await Property.countDocuments({});
+    const propertyId = `PY-${count + 1}`;
+
     const newProperty = new Property({
+      propertyId,
       hostId: userId,
       title: req.body.title,
       description: req.body.description,
@@ -136,6 +144,7 @@ const createProperty = async (req, res, next) => {
       latitude: req.body.latitude,
       addressId: savedAddress._id,
       amenities: amenitiesArray,
+      PropertyTypeId: req.body.property_type_id,
     });
 
     const property = await newProperty.save();
@@ -150,8 +159,7 @@ const createProperty = async (req, res, next) => {
   }
 };
 
-// Route to get all properties
-const getAllProperties = async (req, res) => {
+const getAllActiveProperties = async (req, res) => {
   try {
     const properties = await Property.find({
       is_active: true,
@@ -183,17 +191,117 @@ const getAllProperties = async (req, res) => {
   }
 };
 
+const getAllProperties = async (req, res) => {
+  try {
+    const searchTerm = req.query.searchTerm || "";
+    const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+    const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+    const status = req.query.status || "";
+    const pageSize = req.query.pageSize ? parseInt(req.query.pageSize) : 10;
+    const page = req.query.page ? parseInt(req.query.page) : 1;
+    const sortBy = req.query.sortBy || "createdAt"; // Default sort by createdAt
+    const sortOrder = req.query.sortOrder || "desc"; // Default descending
+
+    let filterOptions = {
+      is_active: true,
+    };
+
+    // Apply status filter if provided
+    if (status) {
+      filterOptions.status = status;
+    }
+
+    // Apply price range filter
+    if (minPrice !== null || maxPrice !== null) {
+      filterOptions.price = {};
+      if (minPrice !== null) filterOptions.price.$gte = minPrice;
+      if (maxPrice !== null) filterOptions.price.$lte = maxPrice;
+    }
+
+    // Handle search by propertyId, hostId.userId, or city
+    if (searchTerm && searchTerm.trim() !== "") {
+      // Find addresses with matching city
+      const cityAddresses = await Address.find({
+        city: { $regex: new RegExp(searchTerm, "i") },
+      }).distinct("_id");
+
+      // Find users with matching userId
+      const matchingUsers = await User.find({
+        userId: { $regex: new RegExp(searchTerm, "i") },
+      }).distinct("_id");
+
+      filterOptions.$or = [
+        { propertyId: { $regex: new RegExp(searchTerm, "i") } },
+        { hostId: { $in: matchingUsers } },
+        { addressId: { $in: cityAddresses } },
+      ];
+    }
+
+    // Set sort options
+    const sortDirection = sortOrder.toLowerCase() === "asc" ? 1 : -1;
+    const sortOptions = { [sortBy]: sortDirection };
+
+    const total = await Property.countDocuments(filterOptions);
+    const properties = await Property.find(filterOptions)
+      .populate("addressId", "street city")
+      .populate("hostId", "FirstName LastName  UserId")
+      .sort(sortOptions)
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .exec();
+
+    if (properties.length === 0) {
+      return res.status(404).send({ message: "No properties found" });
+    }
+
+    const modifiedProperties = properties.map((property) => {
+      const { longitude, latitude, images, ...rest } = property.toObject();
+      const firstImage = images && images[0];
+      return {
+        ...rest,
+        images: firstImage ? [firstImage] : [],
+      };
+    });
+
+    res.status(200).send({
+      message: "Properties fetched successfully",
+      total,
+      page,
+      pageSize,
+      properties: modifiedProperties,
+    });
+  } catch (err) {
+    res.status(500).send({ message: "Error fetching properties", error: err });
+  }
+};
 const getHostproperties = async (req, res) => {
   try {
-    const userId = req.user._id; // Extract the hostId from route params
+    const userId = req.user._id;
     console.log("Host ID:", userId);
     if (!userId) {
       return res.status(400).json({ message: "Host ID is required" });
     }
 
-    const properties = await Property.find({ hostId: userId })
+    // Extract query parameters
+    const { page = 1, limit = 10, title } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.max(1, parseInt(limit));
+
+    // Build query object
+    const query = { hostId: userId };
+    if (title) {
+      query.title = { $regex: title, $options: "i" }; // Case-insensitive search
+    }
+
+    // Execute query with pagination
+    const properties = await Property.find(query)
       .populate("addressId", "street city")
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
       .exec();
+
+    const totalCount = await Property.countDocuments(query);
 
     if (!properties || properties.length === 0) {
       return res
@@ -201,7 +309,18 @@ const getHostproperties = async (req, res) => {
         .json({ message: "No properties found for this host" });
     }
 
-    res.status(200).json({ properties });
+    // Prepare response with pagination metadata
+    const response = {
+      properties,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(totalCount / limitNum),
+        totalItems: totalCount,
+        itemsPerPage: limitNum,
+      },
+    };
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ message: "Server error, please try again later." });
@@ -316,7 +435,7 @@ const uploadImage = async (req, res) => {
     const imagePaths = [];
 
     // Ensure the 'uploads' directory exists
-    const uploadDir = path.join(__dirname, "..", "uploads");
+    const uploadDir = path.join(__dirname, "..", "uploads/properties");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir);
     }
@@ -406,16 +525,65 @@ const deleteImage = async (req, res) => {
 
 const pendingApproval = async (req, res) => {
   try {
-    const pendingProperties = await Property.find({ status: "pending" })
+    const {
+      searchTerm = "",
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      page = 1,
+      pageSize = 10,
+    } = req.query;
+
+    const skip = (page - 1) * pageSize;
+
+    let filterOptions = {
+      status: "pending",
+    };
+
+    // Handle search by propertyId, hostId.userId, or city
+    if (searchTerm && searchTerm.trim() !== "") {
+      // Find addresses with matching city
+      const cityAddresses = await Address.find({
+        city: { $regex: new RegExp(searchTerm, "i") },
+      }).distinct("_id");
+
+      // Find users with matching userId
+      const matchingUsers = await User.find({
+        UserId: { $regex: new RegExp(searchTerm, "i") },
+      }).distinct("_id");
+
+      filterOptions.$or = [
+        { propertyId: { $regex: new RegExp(searchTerm, "i") } },
+        { hostId: { $in: matchingUsers } },
+        { addressId: { $in: cityAddresses } },
+      ];
+    }
+
+    // Set sort options
+    const sortDirection = sortOrder.toLowerCase() === "asc" ? 1 : -1;
+    const sortOptions = { [sortBy]: sortDirection };
+
+    // Get total count for pagination
+    const total = await Property.countDocuments(filterOptions);
+
+    // Fetch paginated properties
+    const pendingProperties = await Property.find(filterOptions)
       .populate("addressId", "street city")
+      .populate("hostId", "FirstName LastName email UserId")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(pageSize))
       .exec();
 
     res.status(200).json({
       success: true,
       count: pendingProperties.length,
+      total,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
       properties: pendingProperties,
     });
   } catch (error) {
+    console.error("Error fetching pending properties:", error);
     res.status(500).json({
       success: false,
       message: "Server Error",
@@ -454,7 +622,7 @@ const approveOrRejectProperty = async (req, res) => {
     }
 
     // Check if host is approved before approving a property
-    if (status === "approved" && host.hostApprovalStatus !== "approved") {
+    if (status === "approved" && host.IdVerfication !== "approved") {
       return res.status(403).json({
         message: `User ${host.FirstName} is not an approved host. Property cannot be approved.`,
       });
@@ -484,13 +652,16 @@ const searchProperties = async (req, res, next) => {
   let amenities = req.query.amenities ? req.query.amenities.split(",") : [];
   let checkIn = req.query.checkIn;
   let checkOut = req.query.checkOut;
-  let maxGuests = req.query.guests ? parseInt(req.query.guests) : null; // New filter for maxGuests
-
+  let maxGuests = req.query.guests ? parseInt(req.query.guests) : null;
+  let propertyType = req.query.propertyType ? req.query.propertyType : null; // New filter for property type
+  let sortOrder = req.query.sortOrder || "none";
   // Room filters
   let minBedrooms = req.query.bedrooms ? parseInt(req.query.bedrooms) : null;
   let exactBedrooms = req.query.bedrooms ? parseInt(req.query.bedrooms) : null;
   let minBathrooms = req.query.bathrooms ? parseInt(req.query.bathrooms) : null;
-  let exactBathrooms = req.query.bathrooms ? parseInt(req.query.bathrooms) : null;
+  let exactBathrooms = req.query.bathrooms
+    ? parseInt(req.query.bathrooms)
+    : null;
 
   try {
     let filterOptions = {
@@ -520,7 +691,12 @@ const searchProperties = async (req, res, next) => {
 
     // Filter by number of guests
     if (maxGuests !== null) {
-      filterOptions.maxGuest = { $gte: maxGuests }; // Ensure the property can accommodate at least the specified number of guests
+      filterOptions.maxGuest = { $gte: maxGuests };
+    }
+
+    // Filter by property type
+    if (propertyType !== null) {
+      filterOptions.PropertyTypeId = propertyType; // Filter by property_type_id
     }
 
     // Filter by City (Using Address Collection)
@@ -545,17 +721,135 @@ const searchProperties = async (req, res, next) => {
 
       filterOptions._id = { $nin: bookedProperties };
     }
+    let sortOptions = {};
+    if (sortOrder === "asc") {
+      sortOptions.price = 1;
+    } else if (sortOrder === "desc") {
+      sortOptions.price = -1;
+    }
 
     let total = await Property.countDocuments(filterOptions);
     let properties = await Property.find(filterOptions)
       .populate("addressId")
+      .sort(sortOptions)  // Add this line to apply the sorting
       .skip((page - 1) * pageSize)
       .limit(pageSize);
 
-    res.status(200).json({ total, properties });
+    res.status(200).json({ properties, total, page, pageSize });
   } catch (error) {
     console.log(error);
     next(error);
+  }
+};
+
+const getTopPropertise = async (req, res) => {
+  try {
+    const { period, startDate, endDate } = req.query;
+
+    // Parse the startDate and endDate from the request query
+    const start = startDate ? new Date(startDate) : new Date();
+    const end = endDate ? new Date(endDate) : new Date();
+
+    // Adjust the start and end dates based on the period
+    if (period === "daily") {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (period === "weekly") {
+      start.setDate(start.getDate() - start.getDay());
+      end.setDate(end.getDate() + (6 - end.getDay()));
+    } else if (period === "monthly") {
+      start.setDate(1);
+      end.setMonth(end.getMonth() + 1, 0);
+    }
+
+    const result = await Booking.aggregate([
+      {
+        $match: {
+          checkIn: { $gte: start, $lte: end },
+          status: "completed",
+        },
+      },
+      {
+        $group: {
+          _id: "$propertyId",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 }, // Sort by booking count in descending order
+      },
+      {
+        $limit: 10, // Limit to top 10 most booked properties
+      },
+    ]);
+
+    // Step 2: Extract propertyIds from result
+    const propertyIds = result.map((item) => item._id);
+
+    // Step 3: Find property titles based on the propertyIds
+    const properties = await Property.find({
+      _id: { $in: propertyIds },
+    }).select("title _id");
+
+    // Step 4: Combine results (properties and booking counts)
+    const data = result.map((item) => {
+      const property = properties.find(
+        (p) => p._id.toString() === item._id.toString()
+      );
+      return {
+        title: property ? property.title : "Unknown",
+        bookingCount: item.count,
+      };
+    });
+
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const deleteProperty = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if the property exists
+    const property = await Property.findByIdAndDelete(id);
+    if (!property) {
+      return res.status(404).json({ message: "Property not found" });
+    }
+
+    res.status(200).json({ message: "Property deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting property:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const toggleActiveStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+
+    const property = await Property.findById(id);
+    if (!property) {
+      return res.status(404).json({ message: "Property not found" });
+    }
+
+    const result = await Property.updateOne(
+      { _id: id },
+      { $set: { is_active } }
+    );
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({ message: "No changes made" });
+    }
+
+    property.is_active = is_active;
+    const updatedProperty = await Property.findById(id);
+
+    res.status(200).json({ message: "Property status updated" });
+  } catch (error) {
+    console.error("Error toggling active status:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -570,4 +864,8 @@ module.exports = {
   pendingApproval,
   approveOrRejectProperty,
   searchProperties,
+  getAllActiveProperties,
+  getTopPropertise,
+  deleteProperty,
+  toggleActiveStatus,
 };

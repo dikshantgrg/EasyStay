@@ -1,8 +1,34 @@
-const Step1 = ({ formData, handleChange, errors }) => (
+const Step1 = ({ formData, handleChange, errors, propertyTypes }) => (
   <div className="space-y-6">
-    <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Property Details</h2>
-    
+    <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+      Property Details
+    </h2>
+
     <div className="mt-6 space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Property Type
+        </label>
+        <select
+          value={formData.property_type_id}
+          مع1
+          onChange={(e) => handleChange("property_type_id", e.target.value)}
+          className={`w-full px-4 py-3 border rounded-lg ${
+            errors.property_type_id ? "border-red-500" : "border-gray-300"
+          }`}
+        >
+          <option value="">Select Property Type</option>
+          {propertyTypes.map((type) => (
+            <option key={type._id} value={type._id}>
+              {type.title}
+            </option>
+          ))}
+        </select>
+        {errors.property_type_id && (
+          <p className="mt-1 text-sm text-red-500">{errors.property_type_id}</p>
+        )}
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Property Title
@@ -40,10 +66,12 @@ const Step1 = ({ formData, handleChange, errors }) => (
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Price per Night ($)
+          Price per Night (Rs)
         </label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+            Rs
+          </span>
           <input
             type="number"
             value={formData.price}

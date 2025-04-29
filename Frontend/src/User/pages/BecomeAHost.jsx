@@ -20,7 +20,7 @@ const BecomeAHost = () => {
     if (!isLoggedIn) {
       setIsLoginModalOpen(true); // Open login modal if user is not logged in
     } else {
-      navigate("/hosting/form?type=become-a-host")
+      navigate("/hosting/form/become-a-host")
     }
   };
 

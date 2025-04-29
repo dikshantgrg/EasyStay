@@ -4,7 +4,7 @@ import axios from "axios";
 import { useDispatch } from "react-redux";
 import { login } from "../features/user/userSlice";
 import { useNavigate } from "react-router-dom";
-
+import side from "../assets/sideimage.png";
 const Login = () => {
   const [formData, setFormData] = useState({
     Email: "admin@gmail.com",
@@ -32,12 +32,12 @@ const Login = () => {
 
       if (response.status === 200) {
         const { token, user } = response.data;
-      
+
         if (user.role !== "admin") {
           setErrorMessage("Access Denied: Only admins are allowed.");
           return;
         }
-      
+
         localStorage.setItem("token", token);
         dispatch(login(user));
         navigate("/dashboard");
@@ -64,13 +64,16 @@ const Login = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left Side - Image */}
-      <div className="hidden lg:flex w-1/2 h-full">
-        <div className="w-full h-full bg-cover bg-center">
-          <div className="w-full h-full bg-black bg-opacity-40 flex items-center justify-center">
-            <div className="text-white text-center px-8">
-              <h1 className="text-4xl font-bold mb-4">Admin Portal</h1>
-              <p className="text-xl">Secure Access to System Administration</p>
-            </div>
+      <div className="hidden lg:flex w-1/2 h-full relative overflow-hidden">
+        <img
+          src={side}
+          alt="Admin Login Background"
+          className="absolute w-full h-full object-cover object-center"
+        />
+        <div className="absolute w-full h-full bg-black bg-opacity-40 flex items-center justify-center">
+          <div className="text-white text-center px-8">
+            <h1 className="text-4xl font-bold mb-4">Admin Portal</h1>
+            <p className="text-xl">Secure Access to System Administration</p>
           </div>
         </div>
       </div>

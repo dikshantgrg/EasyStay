@@ -6,8 +6,15 @@ const {
   getGuestsForHost,
   getUserCompletedBooking,
   checkBookingAvailability,
+  getAllBookings,
+  monthlyBookingReport,
+  getEarnings,
+  getBookingCount,
+
+  deleteBooking,
+  cancelBooking,
 } = require("../controller/booking");
-const { checkAuthorization } = require("../middleware/auth");
+const { checkAuthorization, isHost, isAdmin } = require("../middleware/auth");
 const router = express.Router();
 
 // for user
@@ -24,8 +31,39 @@ router.get(
   checkAuthorization,
   getUserCompletedBooking
 );
+router.put("/api/cancel-booking/:bookingId", checkAuthorization, cancelBooking);
+
 
 //for host
-router.get("/api/host-booking/:category", checkAuthorization, getGuestsForHost);
+router.get(
+  "/api/host-booking/:category",
+  checkAuthorization,
+  isHost,
+  getGuestsForHost
+);
+
+// for admin
+router.get("/api/admin/bookings", checkAuthorization, isAdmin, getAllBookings);
+router.get(
+  "/api/admin/monthly-bookings-report",
+  checkAuthorization,
+  isAdmin,
+  monthlyBookingReport
+);
+router.delete(
+  "/api/admin/delete-booking/:id",
+  checkAuthorization,
+  isAdmin,
+  deleteBooking
+);
+
+// router.get("/api/admin/guest-stats", checkAuthorization, getGuestStats);
+router.get("/api/admin/earnings", checkAuthorization, isAdmin, getEarnings);
+router.get(
+  "/api/admin/booking-count",
+  checkAuthorization,
+  isAdmin,
+  getBookingCount
+);
 
 module.exports = router;

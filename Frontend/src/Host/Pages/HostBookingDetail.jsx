@@ -58,15 +58,15 @@ const HostBookingDetail = () => {
               Booking Details
             </h1>
           </div>
-          {/* <span
+          <span
             className={`px-4 py-2 rounded-full text-sm font-medium mt-4 sm:mt-0 ${
-              booking.status === "Confirmed"
+              booking.status === "active"
                 ? "bg-green-100 text-green-800"
-                : "bg-yellow-100 text-yellow-800"
+                : "bg-red-100 text-red-800"
             }`}
           >
             {booking.status}
-          </span> */}
+          </span>
         </div>
         <p className="text-gray-600 ">Booking ID: {booking.bookingId}</p>
 
@@ -81,7 +81,7 @@ const HostBookingDetail = () => {
               </h2>
               <div className="flex items-start gap-6">
                 <img
-                  src="/default-avatar.png"
+                  src={`http://localhost:8000/${booking.userId.profileImage}` || "/default-avatar.png"}
                   alt="Guest"
                   className="w-20 h-20 rounded-full object-cover"
                 />
@@ -133,14 +133,7 @@ const HostBookingDetail = () => {
                   <span>Total Booking Price</span>
                   <span>NPR {booking.totalPrice}</span>
                 </div>
-                {/* <div className="flex justify-between text-green-600">
-                  <span>Your Earnings</span>
-                  <span>${(booking.totalPrice * 0.85).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-gray-500 text-sm">
-                  <span>Service Fee (15%)</span>
-                  <span>${(booking.totalPrice * 0.15).toFixed(2)}</span>
-                </div> */}
+               
               </div>
             </div>
 
@@ -150,48 +143,19 @@ const HostBookingDetail = () => {
                 <FiMessageSquare className="mr-2" /> Actions
               </h2>
               <div className="space-y-3">
-                {/* <button className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  Contact Guest
-                </button> */}
+                
                 <button className="w-full py-2 px-4 border text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                   Update Booking Status
                 </button>
-                {/* <button className="w-full py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Generate Report
-                </button> */}
+              
               </div>
             </div>
 
-            {/* Special Requests */}
-            {/* {booking.specialRequests && (
-              <div className="bg-white p-6 rounded-xl shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">Special Requests</h2>
-                <p className="text-gray-600">{booking.specialRequests}</p>
-              </div>
-            )} */}
+           
           </div>
         </div>
 
-        {/* Property Info */}
-        {/* <div className="mt-8 bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">Property Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium mb-2">Amenities</h3>
-              <ul className="list-disc pl-5 space-y-2">
-                {booking.property.amenities.map((amenity, index) => (
-                  <li key={index} className="text-gray-600">
-                    {amenity}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">House Rules</h3>
-              <p className="text-gray-600">{booking.property.rules}</p>
-            </div>
-          </div>
-        </div> */}
+        
       </div>
     </div>
   );

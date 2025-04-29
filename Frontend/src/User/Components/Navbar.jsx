@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import LoginModal from "./LoginModal";
 import DropdownMenu from "./DropdownMenu";
@@ -10,11 +10,11 @@ import {
 } from "../../features/user/hostModeSlice";
 import SignupModal from "./SignUPModal";
 
-
 const Navbar = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const location = useLocation();
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -34,6 +34,10 @@ const Navbar = () => {
     navigate("/");
   };
 
+  const isActiveLink = (path) => {
+    return location.pathname === path;
+  };
+
   return (
     <>
       <div className="bg-white shadow-md border-b border-gray-300">
@@ -48,8 +52,7 @@ const Navbar = () => {
                 EasyStay
               </Link>
             </div>
-            {/* {window.location.pathname !== "/" && <SearchBar isHomePage={false} />} */}
-            {/* Navigation Links */}
+           
             <div
               className={`flex-1 ${
                 isHostMode ? "flex justify-center" : "flex justify-end"
@@ -59,19 +62,25 @@ const Navbar = () => {
                 <>
                   <Link
                     to="/hosting/dashboard"
-                    className="text-lg font-semibold hover:text-blue-700"
+                    className={`text-lg font-semibold hover:text-blue-700 ${
+                      isActiveLink('/hosting/dashboard') ? 'text-blue-700 border-b-2 border-blue-700' : ''
+                    }`}
                   >
                     Dashboard
                   </Link>
                   <Link
                     to="/hosting/property"
-                    className="text-lg font-semibold hover:text-blue-700"
+                    className={`text-lg font-semibold hover:text-blue-700 ${
+                      isActiveLink('/hosting/property') ? 'text-blue-700 border-b-2 border-blue-700' : ''
+                    }`}
                   >
                     Listings
                   </Link>
                   <Link
                     to="/host/reservations"
-                    className="text-lg font-semibold hover:text-blue-700"
+                    className={`text-lg font-semibold hover:text-blue-700 ${
+                      isActiveLink('/host/reservations') ? 'text-blue-700 border-b-2 border-blue-700' : ''
+                    }`}
                   >
                     Reservations
                   </Link>
@@ -83,7 +92,11 @@ const Navbar = () => {
                       ? "/hosting/Dashboard"
                       : "/BecomeaHost"
                   }
-                  className="text-lg font-semibold hover:text-blue-700 mr-2"
+                  className={`text-lg font-semibold hover:text-blue-700 mr-2 ${
+                    isActiveLink('/BecomeaHost') || isActiveLink('/hosting/Dashboard') 
+                      ? 'text-blue-700 border-b-2 border-blue-700' 
+                      : ''
+                  }`}
                   onClick={() => {
                     if (
                       (user?.role === "host" || user?.hostApprovalStatus === "pending") &&
@@ -93,13 +106,9 @@ const Navbar = () => {
                     }
                   }}
                 >   
-                     
-
                   {user?.role === "host" || user?.hostApprovalStatus === "pending"
-                    ? "Go to Hosting Dashboard"
+                    ? "Manage Propertise"
                     : "Become a Host"}
-
-                    
                 </Link>
               )}
             </div>
@@ -114,7 +123,7 @@ const Navbar = () => {
                   isHostMode={isHostMode}
                   toggleHostMode={handleToggleHostMode}
                   userRole={user?.role}
-                  isApproved={user?.hostApprovalStatus}
+                 
                 />
               ) : (
                 <div className="space-x-3">

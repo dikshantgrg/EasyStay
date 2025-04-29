@@ -1,4 +1,5 @@
 import React from "react";
+import { FaFacebook, FaTwitter, FaInstagram } from "react-icons/fa";
 
 const Footer = () => {
   return (
@@ -8,12 +9,12 @@ const Footer = () => {
         <div>
           <h5 className="text-4xl font-semibold mb-4">EasyStay</h5>
           <p className="text-sm">
-          Find and book unique accommodations
+            Find and book unique accommodations
           </p>
         </div>
         {/* Column 2 */}
         <div>
-          <h3 className="text-lg font-semibold mb-4"> Discover</h3>
+          <h3 className="text-lg font-semibold mb-4">Discover</h3>
           <ul className="space-y-2">
             <li>
               <a href="#" className="hover:underline">
@@ -30,47 +31,49 @@ const Footer = () => {
                 Travel Guides
               </a>
             </li>
-           
           </ul>
         </div>
-       
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Support</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <a href="#" className="hover:underline">
+
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Support</h3>
+          <ul className="space-y-2 text-sm">
+            <li>
+              <a href="#" className="hover:underline">
                 Help Center
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:underline">
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:underline">
                 Safety Information
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:underline">
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:underline">
                 Contact Us
-                  </a>
-                </li>
-              </ul>
-            </div>
-            {/* Column 4 */}
+              </a>
+            </li>
+          </ul>
+        </div>
+        {/* Column 4 */}
         <div>
           <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
           <ul className="flex space-x-4">
             <li>
-              <a href="#" className="hover:text-gray-400">
-                <i className="fab fa-facebook"></i> Facebook
+              <a href="#" className="hover:text-gray-400 flex items-center gap-2">
+                <FaFacebook className="text-xl" />
+                <span>Facebook</span>
               </a>
             </li>
             <li>
-              <a href="#" className="hover:text-gray-400">
-                <i className="fab fa-twitter"></i> Twitter
+              <a href="#" className="hover:text-gray-400 flex items-center gap-2">
+                <FaTwitter className="text-xl" />
+                <span>Twitter</span>
               </a>
             </li>
             <li>
-              <a href="#" className="hover:text-gray-400">
-                <i className="fab fa-instagram"></i> Instagram
+              <a href="#" className="hover:text-gray-400 flex items-center gap-2">
+                <FaInstagram className="text-xl" />
+                <span>Instagram</span>
               </a>
             </li>
           </ul>

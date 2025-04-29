@@ -3,8 +3,12 @@ const Step2 = ({ formData, handleChange, errors }) => (
     <div className="space-y-8 divide-y divide-gray-200">
       <div className="space-y-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Address Details</h2>
-          <p className="mt-2 text-sm text-gray-500">Provide the physical location of your property</p>
+          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+            Address Details
+          </h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Provide the physical location of your property
+          </p>
         </div>
 
         <div className="mt-6 space-y-6">
@@ -54,31 +58,36 @@ const Step2 = ({ formData, handleChange, errors }) => (
                 Province
               </label>
               <select
-                id="province_id"
-                name="province_id"
-                value={formData.province_id}
-                onChange={(e) => handleChange("province_id", e.target.value)}
+                id="province_name"
+                name="province_name"
+                value={formData.province_name}
+                onChange={(e) => handleChange("province_name", e.target.value)}
                 className={`block w-full px-4 py-3 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                  errors.province_id ? "border-red-500" : "border-gray-300"
+                  errors.province_name ? "border-red-500" : "border-gray-300"
                 }`}
               >
                 <option value="">Select Province</option>
-                <option value="1">Province 1</option>
-                <option value="2">Province 2</option>
-                <option value="3">Province 3</option>
-                <option value="4">Province 4</option>
-                <option value="5">Province 5</option>
-                <option value="6">Province 6</option>
-                <option value="7">Province 7</option>
+                <option value="Koshi">Koshi</option>
+                <option value="Madhesh">Madhesh</option>
+                <option value="Bagmati">Bagmati</option>
+                <option value="Gandaki">Gandaki</option>
+                <option value="Lumbini">Lumbini</option>
+                <option value="Karnali">Karnali</option>
+                <option value="Sudurpashchim">Sudurpashchim</option>
               </select>
-              {errors.province_id && (
-                <p className="mt-1 text-sm text-red-500">{errors.province_id}</p>
+              {errors.province_name && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.province_name}
+                </p>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="zipCode"
+              className="block text-sm font-medium text-gray-700"
+            >
               ZIP/Postal Code
             </label>
             <input

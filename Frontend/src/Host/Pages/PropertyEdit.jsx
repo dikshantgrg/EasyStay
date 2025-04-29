@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { HiArrowLeft } from "react-icons/hi2";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast, Toaster } from "react-hot-toast";
 import { RxCross1 } from "react-icons/rx";
 import { MapContainer, Marker, TileLayer, useMapEvent } from "react-leaflet";
 import {
@@ -104,11 +105,21 @@ const PropertyEdit = () => {
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [images, setImages] = useState([]);
-  const [titleForm, setTitleForm] = useState({ title: "", description: "" });
+  const [titleForm, setTitleForm] = useState({
+    title: "",
+    description: "",
+    price: 0,
+  });
+  const [formErrors, setFormErrors] = useState({
+    title: "",
+    description: "",
+    price: "",
+    images: "",
+  });
   const [addressForm, setAddressForm] = useState({
     street: "",
     city: "",
-    province_id: "",
+    province_name: "",
     zipCode: "",
   });
   const [coordinates, setCoordinates] = useState({ lat: 0, lng: 0 });
@@ -116,8 +127,62 @@ const PropertyEdit = () => {
     bedrooms: 1,
     bathrooms: 1,
     kitchen: 1,
-    amenities: [], // Initialize amenities
+    amenities: [],
   });
+  const [isPropertyActive, setIsPropertyActive] = useState(false);
+
+  // Validation function
+  const validateForm = () => {
+    const errors = {
+      title: "",
+      description: "",
+      price: "",
+      images: "",
+    };
+    let isValid = true;
+
+    // Title validation
+    if (!titleForm.title.trim()) {
+      errors.title = "Title is required";
+      isValid = false;
+    } else if (titleForm.title.length < 5) {
+      errors.title = "Title must be at least 5 characters long";
+      isValid = false;
+    }
+
+    // Description validation
+    if (!titleForm.description.trim()) {
+      errors.description = "Description is required";
+      isValid = false;
+    } else if (titleForm.description.length < 20) {
+      errors.description = "Description must be at least 20 characters long";
+      isValid = false;
+    }
+
+    // Price validation
+    if (titleForm.price === "" || isNaN(titleForm.price)) {
+      errors.price = "Price is required";
+      isValid = false;
+    } else if (titleForm.price <= 0) {
+      errors.price = "Price must be greater than 0";
+      isValid = false;
+    } else if (titleForm.price < 1) {
+      errors.price = "Price must be at least $1";
+      isValid = false;
+    } else if (titleForm.price > 10000) {
+      errors.price = "Price cannot exceed $10,000";
+      isValid = false;
+    }
+
+    // Images validation
+    if (images.length < 5) {
+      errors.images = "At least 5 images are required";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
 
   // Fetch property data
   const fetchProperty = async () => {
@@ -130,7 +195,7 @@ const PropertyEdit = () => {
           },
         }
       );
-      console.log("Fetch API Response:", response.data);
+      console.log("API Response:", response);
       const data = response.data.property || response.data;
       if (!data || typeof data !== "object") {
         console.error("Invalid API response data:", data);
@@ -141,12 +206,13 @@ const PropertyEdit = () => {
       setTitleForm({
         title: data.title || "",
         description: data.description || "",
+        price: data.price || 0,
       });
       setRoomsForm({
         bedrooms: data.bedrooms || 1,
         bathrooms: data.bathrooms || 1,
         kitchen: data.kitchen || 1,
-        amenities: data.amenities || [], // Set fetched amenities
+        amenities: data.amenities || [],
       });
       setCoordinates({
         lat: data.latitude || 0,
@@ -155,15 +221,47 @@ const PropertyEdit = () => {
       setAddressForm({
         street: data.addressId?.street || data.address?.street || "",
         city: data.addressId?.city || data.address?.city || "",
-        province_id:
-          data.addressId?.province_id || data.address?.province_id || "",
+        province_name:
+          data.addressId?.province_name || data.address?.province_name || "",
         zipCode: data.addressId?.zipCode || data.address?.zipCode || "",
       });
       setImages(data.images || []);
+      setIsPropertyActive(data.is_active || false); // Set initial is_active status
     } catch (error) {
       console.error("Error fetching property:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to toggle property is_active status
+  const togglePropertyActive = async () => {
+    try {
+      const newActiveStatus = !isPropertyActive;
+      const response = await axios.put(
+        `http://localhost:8000/api/host/toggle-active/${property._id}`,
+        { is_active: newActiveStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      if (response.status === 200) {
+        setIsPropertyActive(newActiveStatus);
+        toast.success(
+          `Property status updated to ${
+            newActiveStatus ? "Active" : "Inactive"
+          }`
+        );
+        await fetchProperty();
+      }
+    } catch (error) {
+      console.error(
+        "Error updating property active status:",
+        error.response?.data || error.message
+      );
+      toast.error("Failed to update property status. Please try again.");
     }
   };
 
@@ -199,17 +297,23 @@ const PropertyEdit = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+
     const updatedProperty = {
       ...property,
       title: titleForm.title,
       description: titleForm.description,
+      price: titleForm.price,
       address: { ...addressForm },
       latitude: coordinates.lat,
       longitude: coordinates.lng,
       bedrooms: roomsForm.bedrooms,
       bathrooms: roomsForm.bathrooms,
       kitchen: roomsForm.kitchen,
-      amenities: roomsForm.amenities, // Include updated amenities
+      amenities: roomsForm.amenities,
     };
 
     const formData = new FormData();
@@ -217,7 +321,7 @@ const PropertyEdit = () => {
     formData.append("description", updatedProperty.description);
     formData.append("addressId", updatedProperty.addressId?._id || "");
     formData.append("address", JSON.stringify(updatedProperty.address));
-    formData.append("price", updatedProperty.price || "");
+    formData.append("price", updatedProperty.price);
     formData.append("maxGuest", updatedProperty.maxGuest || "");
     formData.append("bedrooms", updatedProperty.bedrooms);
     formData.append("bathrooms", updatedProperty.bathrooms);
@@ -226,11 +330,11 @@ const PropertyEdit = () => {
     formData.append("latitude", updatedProperty.latitude);
     updatedProperty.amenities.forEach((amenity) =>
       formData.append("amenities[]", amenity)
-    ); // Append amenities as array
+    );
 
     try {
       const response = await axios.put(
-        `http://localhost:8000/api/edit/property/${id}`, // Updated endpoint to match your editProperty route
+        `http://localhost:8000/api/edit/property/${id}`,
         formData,
         {
           headers: {
@@ -239,21 +343,23 @@ const PropertyEdit = () => {
           },
         }
       );
-      console.log("Update API Response:", response.data);
-
-      // Refetch the full property to ensure we get the updated data
       await fetchProperty();
-      alert("Property updated successfully!");
+      toast.success("Property updated successfully!");
     } catch (error) {
       console.error(
         "Error updating property:",
         error.response?.data || error.message
       );
-      alert("Error updating property!");
+      toast.error("Error updating property!");
     }
   };
 
   const handleDelete = async (imagePath) => {
+    if (images.length <= 5) {
+      toast.error("Cannot delete image: At least 5 images are required.");
+      return;
+    }
+
     try {
       const response = await axios.delete(
         `http://localhost:8000/api/delete/${property?._id}`,
@@ -268,12 +374,15 @@ const PropertyEdit = () => {
         setImages((prevImages) =>
           prevImages.filter((img) => img !== imagePath)
         );
+        toast.success("Image deleted successfully");
+        validateForm();
       }
     } catch (error) {
       console.error(
         "Error deleting image:",
         error.response?.data || error.message
       );
+      toast.error("Failed to delete image");
     }
   };
 
@@ -301,15 +410,12 @@ const PropertyEdit = () => {
       );
       const validImages = response.data.images || [];
       setImages((prev) => [...prev, ...validImages]);
+      toast.success("Images uploaded successfully");
+      validateForm();
     } catch (error) {
       console.error("Upload error:", error);
+      toast.error("Failed to upload images");
     }
-  };
-
-  const [isPropertyActive, setIsPropertyActive] = useState(false);
-
-  const handleToggle = () => {
-    setIsPropertyActive(!isPropertyActive);
   };
 
   if (loading) return <div>Loading...</div>;
@@ -317,6 +423,22 @@ const PropertyEdit = () => {
 
   return (
     <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-8 flex flex-col h-screen">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "#363636",
+            color: "#fff",
+          },
+          success: {
+            duration: 3000,
+            theme: {
+              primary: "#4aed88",
+            },
+          },
+        }}
+      />
       <div className="flex items-center gap-4 mb-4 flex-shrink-0">
         <button
           className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full"
@@ -329,7 +451,6 @@ const PropertyEdit = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow h-[calc(100vh-100px)]">
         {/* Left Sidebar */}
-
         <div className="lg:col-span-1 space-y-6 overflow-y-auto h-full p-3">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 hover:shadow-lg">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
@@ -337,17 +458,12 @@ const PropertyEdit = () => {
             </h2>
             <div
               className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors duration-150"
-              onClick={handleToggle}
+              onClick={togglePropertyActive}
             >
-              {/* Icon */}
               <FiHome className="h-6 w-6 text-gray-700" />
-
-              {/* Text Label */}
               <span className="text-base font-semibold text-gray-800 flex-1">
                 {isPropertyActive ? "Property: Active" : "Property: Inactive"}
               </span>
-
-              {/* Toggle Switch */}
               <div
                 className={`w-12 h-6 rounded-full p-1 ${
                   isPropertyActive ? "bg-green-500" : "bg-red-500"
@@ -376,6 +492,12 @@ const PropertyEdit = () => {
                   {property.title || titleForm.title}
                 </p>
               </div>
+              <div className="p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+                <h3 className="text-sm font-medium text-gray-600">Price</h3>
+                <p className="text-gray-900 mt-1">
+                  Rs {property.price || titleForm.price} / night
+                </p>
+              </div>
             </div>
           </div>
 
@@ -398,6 +520,9 @@ const PropertyEdit = () => {
                 </div>
               ))}
             </div>
+            {formErrors.images && (
+              <p className="mt-4 text-sm text-red-500">{formErrors.images}</p>
+            )}
           </div>
 
           <div
@@ -421,7 +546,9 @@ const PropertyEdit = () => {
             className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 hover:shadow-lg"
             onClick={() => setEditMode("Room")}
           >
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Room and Amenties </h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Room and Amenities
+            </h2>
             <div className="space-y-4">
               <div className="p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
                 <p className="text-gray-900 mt-1">
@@ -438,7 +565,7 @@ const PropertyEdit = () => {
         {editMode === "Title" ? (
           <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-full overflow-y-auto">
             <h2 className="text-xl font-semibold text-gray-800 mb-6">
-              Edit Title & Description
+              Edit Title, Description & Price
             </h2>
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
@@ -451,8 +578,40 @@ const PropertyEdit = () => {
                   }
                   value={titleForm.title}
                   type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-4 py-2 border ${
+                    formErrors.title ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                 />
+                {formErrors.title && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {formErrors.title}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price per Night
+                </label>
+                <input
+                  onChange={(e) =>
+                    setTitleForm((prev) => ({
+                      ...prev,
+                      price: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  value={titleForm.price}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={`w-full px-4 py-2 border ${
+                    formErrors.price ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                />
+                {formErrors.price && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {formErrors.price}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -466,9 +625,25 @@ const PropertyEdit = () => {
                     }))
                   }
                   rows="4"
-                  className="w-full h-72 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full h-72 px-4 py-2 border ${
+                    formErrors.description
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   value={titleForm.description}
                 ></textarea>
+                {formErrors.description && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {formErrors.description}
+                  </p>
+                )}
+              </div>
+              <div>
+                {formErrors.images && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {formErrors.images}
+                  </p>
+                )}
               </div>
               <div className="pt-6 border-t border-gray-200">
                 <button
@@ -485,6 +660,9 @@ const PropertyEdit = () => {
             <h2 className="text-xl font-semibold text-gray-800 mb-6">
               Manage Photos
             </h2>
+            {formErrors.images && (
+              <p className="mb-4 text-sm text-red-500">{formErrors.images}</p>
+            )}
             <div className="grid grid-cols-3 gap-4">
               {images.map((item, index) => (
                 <div
@@ -558,19 +736,27 @@ const PropertyEdit = () => {
                 </div>
                 <div>
                   <label className="block text-lg font-medium text-gray-700 mb-1">
-                    State
+                    Province
                   </label>
-                  <input
+                  <select
                     onChange={(e) =>
                       setAddressForm((prev) => ({
                         ...prev,
-                        province_id: e.target.value,
+                        province_name: e.target.value,
                       }))
                     }
-                    value={addressForm.province_id}
-                    type="text"
+                    value={addressForm.province_name}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  >
+                    <option value="">Select Province</option>
+                    <option value="Koshi">Koshi</option>
+                    <option value="Madhesh">Madhesh</option>
+                    <option value="Bagmati">Bagmati</option>
+                    <option value="Gandaki">Gandaki</option>
+                    <option value="Lumbini">Lumbini</option>
+                    <option value="Karnali">Karnali</option>
+                    <option value="Sudurpashchim">Sudurpashchim</option>
+                  </select>
                 </div>
               </div>
               <div>
@@ -612,6 +798,13 @@ const PropertyEdit = () => {
                   <p>Property Latitude: {coordinates.lat}</p>
                   <p>Property Longitude: {coordinates.lng}</p>
                 </div>
+              </div>
+              <div>
+                {formErrors.images && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {formErrors.images}
+                  </p>
+                )}
               </div>
               <div className="pt-6 border-t border-gray-200">
                 <button
@@ -744,7 +937,13 @@ const PropertyEdit = () => {
                   })}
                 </div>
               </div>
-
+              <div>
+                {formErrors.images && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {formErrors.images}
+                  </p>
+                )}
+              </div>
               <div className="pt-6 border-t border-gray-200">
                 <button
                   type="submit"

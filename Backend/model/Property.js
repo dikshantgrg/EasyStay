@@ -4,6 +4,11 @@ const Schema = mongoose.Schema;
 const ObjectId = mongoose.Schema.ObjectId;
 
 const propertySchema = new Schema({
+  propertyId: {
+    type: String,
+    unique: true,
+    required: true,
+  },
   hostId: {
     type: ObjectId,
     required: true,
@@ -22,6 +27,11 @@ const propertySchema = new Schema({
     type: Number,
     required: true,
     min: 0,
+  },
+  PropertyTypeId: {
+    type: ObjectId,
+    required: true,
+    ref: "PropertyType",
   },
   addressId: {
     type: ObjectId,

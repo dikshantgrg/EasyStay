@@ -19,10 +19,15 @@ import BookingDetails from "./User/pages/BookingDetails";
 import HostBookingDetail from "./Host/Pages/HostBookingDetail";
 import ToReviewPage from "./User/pages/ToReviewPage";
 import PropertyReview from "./Host/Pages/PropertyReview";
-import PropertyFilterPage from "./User/Components/PropertyFilterPage";
+
 import PaymentSuccess from "./User/Components/PaymentSuccess";
 import PaymentFailure from "./User/Components/PaymentFailure";
 import Profile from "./User/pages/Profile";
+import BecomeHostForm from "./User/Components/BecomeHostForm";
+import Reservation from "./Host/Pages/Reservation";
+import PropertyFilterPage from "./User/pages/PropertyFilterPage";
+import { Toaster } from "react-hot-toast";
+import Footer from "./User/Components/Footer";
 
 function App() {
   const dispatch = useDispatch();
@@ -34,28 +39,46 @@ function App() {
     if (token) {
       try {
         const userData = jwtDecode(token);
-        dispatch(setUser(userData));
+        // Check if token is expired
+        const currentTime = Date.now() / 1000; // Convert to seconds
+        if (userData.exp < currentTime) {
+          console.warn("Token has expired");
+          localStorage.removeItem("token");
+          dispatch(setUser(null));
+        } else {
+          dispatch(setUser(userData));
+        }
       } catch (error) {
         console.error("Invalid Token:", error.message);
         localStorage.removeItem("token");
+        dispatch(setUser(null));
       }
     }
-    setIsLoading(false); // Set loading to false after checking token
-  }, [dispatch]);
+    setIsLoading(false);
+  }, [dispatch, setIsLoading]);
+  console.log(user);
 
-  // Protected Route Component
-  const ProtectedRoute = ({ children }) => {
+  // Enhanced Protected Route Component with role check
+  const ProtectedRoute = ({ children, allowedRoles }) => {
     if (isLoading) {
-      return <div>Loading...</div>; // Show a loading state while checking token
+      return <div>Loading...</div>;
     }
-    return user ? children : <Navigate to="/" />;
+
+    if (!user) {
+      return <Navigate to="/" />;
+    }
+
+    // Check if user has the required role
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+      return <Navigate to="/" />;
+    }
+
+    return children;
   };
-  const [showModal, setShowModal] = useState(false);
+
   return (
     <>
-      {/* <PropertyReview /> */}
       <Navbar />
-      
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
@@ -63,38 +86,24 @@ function App() {
         <Route path="/booking/:id" element={<BookingPage />} />
         <Route path="/properties" element={<PropertyFilterPage />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/bookings/review" element={<ToReviewPage />} />
+        <Route path="/bookings" element={<UserBooking />} />
+        <Route path="/becomeahost" element={<BecomeAHost />} />
         {/* User Protected Routes */}
 
-        
         <Route
-          path="/becomeahost"
+          path="/hosting/form/become-a-host"
           element={
-            <ProtectedRoute>
-              <BecomeAHost />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/bookings"
-          element={
-            <ProtectedRoute>
-              <UserBooking />
+            <ProtectedRoute allowedRoles={["user"]}>
+              <BecomeHostForm />
             </ProtectedRoute>
           }
         />
         <Route
           path="/booking/details/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["user"]}>
               <BookingDetails />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/bookings/review"
-          element={
-            <ProtectedRoute>
-              <ToReviewPage />
             </ProtectedRoute>
           }
         />
@@ -103,7 +112,7 @@ function App() {
         <Route
           path="/hosting/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["host"]}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -111,7 +120,7 @@ function App() {
         <Route
           path="/hosting/property"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["host"]}>
               <Property />
             </ProtectedRoute>
           }
@@ -119,7 +128,7 @@ function App() {
         <Route
           path="/host/property/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["host"]}>
               <PropertyEdit />
             </ProtectedRoute>
           }
@@ -127,7 +136,7 @@ function App() {
         <Route
           path="/host/property/reviews/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["host"]}>
               <PropertyReview />
             </ProtectedRoute>
           }
@@ -135,7 +144,7 @@ function App() {
         <Route
           path="/hosting/form"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["host"]}>
               <MultiForm />
             </ProtectedRoute>
           }
@@ -144,16 +153,38 @@ function App() {
         <Route
           path="/host/booking/details/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["host"]}>
               <HostBookingDetail />
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/host/reservations"
+          element={
+            <ProtectedRoute allowedRoles={["host"]}>
+              <Reservation />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Payment Routes */}
         <Route path="/booking/success/" element={<PaymentSuccess />} />
-        <Route path="/booking/failure" element={<PaymentFailure />} />
+
         {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "#363636",
+            color: "#fff",
+          },
+        }}
+      />
+      {/* <Footer /> */}
     </>
   );
 }

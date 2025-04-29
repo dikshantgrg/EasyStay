@@ -102,7 +102,7 @@ const Step6 = ({ formData, handleChange, errors }) => {
 
   useEffect(() => {
    
-    setSelectedAmenities(formData.amenities || []);
+    setSelectedAmenities(formData.amenities || []);``
   }, [formData.amenities]);
 
   const handleAmenityChange = (amenityName) => {

@@ -4,7 +4,8 @@ import axios from "axios";
 import { IoIosArrowBack, IoIosCheckmarkCircle } from "react-icons/io";
 import { FiCalendar, FiUser } from "react-icons/fi";
 import Footer from "../Components/Footer";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { jwtDecode } from "jwt-decode";
 
 const BookingPage = () => {
   const { id } = useParams();
@@ -23,10 +24,10 @@ const BookingPage = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const user = useSelector((state) => state.user.user);
 
-  // console.log(user);
-  
+  const user = useSelector((state) => state.user.user);
+  const dispatch = useDispatch();
+
   useEffect(() => {
     if (!location.state) {
       navigate(`/property/${id}`);
@@ -38,7 +39,7 @@ const BookingPage = () => {
         const response = await axios.get(
           `http://localhost:8000/api/property/${id}`
         );
-        console.log(response)
+        console.log(response);
         setProperty(response.data.property);
         setBookingInfo((prev) => ({
           ...prev,
@@ -56,7 +57,7 @@ const BookingPage = () => {
 
   const validateForm = () => {
     let tempErrors = {};
-   console.log(user);
+    console.log(user);
     // Phone validation (only if user doesn't have a phone number)
     if (!user?.phoneNumber) {
       if (!bookingInfo.phone) {
@@ -65,7 +66,7 @@ const BookingPage = () => {
         tempErrors.phone = "Please enter a valid phone number";
       }
     }
-  
+
     // Other validations (check-in, check-out, guests) remain unchanged
     if (!bookingInfo.checkIn) {
       tempErrors.checkIn = "Check-in date is required";
@@ -80,16 +81,14 @@ const BookingPage = () => {
         tempErrors.checkOut = "Check-out date must be after check-in date";
       }
     }
-  
+
     if (bookingInfo.guests < 1) {
       tempErrors.guests = "Number of guests must be at least 1";
     }
-  
+
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
-
-
 
   const calculateTotal = () => {
     if (!bookingInfo.checkIn || !bookingInfo.checkOut)
@@ -103,7 +102,7 @@ const BookingPage = () => {
     return { total: dailyPrice * nights, nights, dailyPrice };
   };
 
-  const handleInputChange = (e) => {  
+  const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setBookingInfo((prev) => ({
       ...prev,
@@ -117,13 +116,13 @@ const BookingPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     console.log("Form submitted with bookingInfo:", bookingInfo);
     if (!validateForm()) {
       console.log("Validation failed with errors:", errors);
       return;
     }
-  
+
     setLoading(true);
     try {
       const { total } = calculateTotal();
@@ -137,9 +136,9 @@ const BookingPage = () => {
         hostId: property.hostId._id,
         phoneNumber: user?.phoneNumber || bookingInfo.phone, // Use user's phone if available
       };
-  
+
       console.log("Sending bookingData:", bookingData);
-  
+
       const response = await axios.post(
         "http://localhost:8000/api/make-booking",
         bookingData,
@@ -149,13 +148,17 @@ const BookingPage = () => {
           },
         }
       );
-  
-      console.log("Booking successful:", response.data);
+
+      console.log("Booking successful:", response);
       setBookingSuccess(true);
+      localStorage.setItem("token", response.data.token);
+
+      
+
       window.location.href = response.data.paymentUrl;
       // setTimeout(() => navigate("/booking-confirmation"), 2000);
     } catch (error) {
-      console.error("Booking failed:", error.response?.data || error.message);
+      console.error("Booking failed:", error);
       alert(
         error.response?.data?.message || "Booking failed. Please try again."
       );
@@ -174,126 +177,117 @@ const BookingPage = () => {
   const { total, nights, dailyPrice } = calculateTotal();
 
   return (
-    <div className="bg-white min-h-screen">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="bg-gray-50 min-h-screen">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <button
           onClick={() => navigate(-1)}
           className="mb-6 flex items-center text-blue-600 hover:text-blue-800"
         >
           <IoIosArrowBack className="mr-1" />
-          Back to Property
+          Back
         </button>
 
         {bookingSuccess && (
           <div className="mb-6 p-4 bg-green-100 rounded-lg flex items-center">
-            <IoIosCheckmarkCircle className="text-green-600 mr-2 text-2xl" />
-            <span className="text-green-800">
-              Booking confirmed! Redirecting...
-            </span>
+            <IoIosCheckmarkCircle className="text-green-600 mr-2" />
+            <span>Booking confirmed! Redirecting to payment...</span>
           </div>
         )}
 
-        <h1 className="text-3xl font-bold mb-8">Complete Your Booking</h1>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h1 className="text-2xl font-semibold mb-6">Booking Summary</h1>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          <form onSubmit={handleSubmit} className="flex-1" noValidate>
-                {!user?.phoneNumber && (
-            <div className="bg-white rounded-xl border-2 border-gray-200 p-6 mb-6">
-              <h2 className="text-xl font-bold mb-6">Required information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={bookingInfo.phone}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-2 border rounded-lg ${
-                        errors.phone ? "border-red-500" : ""
-                      }`}
-                      required
-                      placeholder="+1234567890"
-                    />
-                    {errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.phone}
-                      </p>
-                    )}
-                  </div>
-              </div>
-            </div>
-                )}
-
-            <div className="py-6">
-              <span className="text-sm">
-                "By selecting 'below button,' you acknowledge and accept our
-                Terms and Conditions and Privacy Policy."
-              </span>
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Property Image and Details */}
+            <div className="lg:w-2/5">
+              <img
+                src={`http://localhost:8000/${property.images[0]}`}
+                alt={property.title}
+                className="w-full h-64 object-cover rounded-lg"
+              />
+              <h2 className="text-xl font-medium mt-4 mb-1">
+                {property.title}
+              </h2>
+              <p className="text-gray-600">
+                {property.addressId.street}, {property.addressId.city}
+              </p>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:bg-gray-400"
-            >
-              {loading ? "Processing..." : "Confirm Booking"}
-            </button>
-          </form>
-
-          <div className="w-full lg:w-96 xl:w-[420px] ">
-            <div className="sticky top-8 bg-white rounded-xl border-2 border-gray-200 p-6">
-              <h2 className="text-xl font-bold mb-6">Booking Summary</h2>
-              <div className="flex items-center mb-4">
-                <img
-                  src={`http://localhost:8000/${property?.images[0]}`}
-                  alt={property.title}
-                  className="w-20 h-20 object-cover rounded-lg mr-4"
-                />
+            {/* Booking Details */}
+            <div className="lg:w-3/5">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-semibold">{property.title}</h3>
-                  <p className="text-sm text-gray-600">
-                    {property.addressId.city}, {property.addressId.country}
+                  <p className="text-gray-600">Check-in</p>
+                  <p className="font-medium">
+                    {new Date(bookingInfo.checkIn).toLocaleDateString()}
                   </p>
                 </div>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center text-gray-600">
-                  <FiCalendar className="mr-2" />
-                  <span>
-                    {new Date(bookingInfo.checkIn).toLocaleDateString()} -{" "}
+                <div>
+                  <p className="text-gray-600">Check-out</p>
+                  <p className="font-medium">
                     {new Date(bookingInfo.checkOut).toLocaleDateString()}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex items-center text-gray-600">
-                  <FiUser className="mr-2" />
-                  <span>{bookingInfo.guests} guests</span>
+                <div>
+                  <p className="text-gray-600">Guests</p>
+                  <p className="font-medium">{bookingInfo.guests} guests</p>
                 </div>
-                <div className="flex items-center text-gray-600">
-                  <span>
-                    Rs {dailyPrice.toFixed(2)} × {nights} nights
-                  </span>
+                <div>
+                  <p className="text-gray-600">Duration</p>
+                  <p className="font-medium">{nights} nights</p>
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold">Total:</span>
-                  <span className="text-xl font-bold text-blue-600">
-                    Rs {total.toFixed(2)}
+              {/* Phone Number Input if needed */}
+              {!user?.phoneNumber && (
+                <div className="mt-6 pt-6 border-t">
+                  <h3 className="text-lg font-medium mb-3">
+                    Contact Information
+                  </h3>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={bookingInfo.phone || ""}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-2 rounded-lg border ${
+                      errors.phone ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="Enter your phone number"
+                  />
+                  {errors.phone && (
+                    <p className="mt-1 text-sm text-red-500">{errors.phone}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Price Summary */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-gray-600">
+                    Room Rate × {nights} nights
+                  </span>
+                  <span>
+                    Rs {dailyPrice} × {nights}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 text-center mt-4">
-                  Includes taxes and service fees
-                </p>
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Total Amount</span>
+                  <span>Rs {total}</span>
+                </div>
+                <button
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className={`w-full mt-4 py-3 rounded-lg text-white font-medium ${
+                    loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {loading ? "Processing..." : "Proceed to Payment"}
+                </button>
               </div>
             </div>
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

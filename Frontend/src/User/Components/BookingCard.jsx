@@ -4,8 +4,10 @@ import { FaRegCalendar, FaStar } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
 import { MdOutlinePeopleOutline } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import ToReviewPage from "../pages/ToReviewPage";
 import RateAndReviewModal from "./RateAndReviewModal";
+import ConfirmationModal from "./ConfirmationModal";
+import axios from "axios";
+import { Toaster, toast } from "react-hot-toast";
 
 const BookingCard = ({
   id,
@@ -27,15 +29,51 @@ const BookingCard = ({
 }) => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
-  console.log(id);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
   
-  // Callback to trigger parent refresh
   const handleReviewSubmitted = () => {
     if (onRefreshBookings) {
-      onRefreshBookings(); // Call the parent's refresh function
+      onRefreshBookings();
     }
   };
 
+  // Handle cancel booking
+  const handleCancelBooking = async () => {
+    setIsCancelling(true);
+    try {
+      const response = await axios.put(
+        `http://localhost:8000/api/cancel-booking/${bookingId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`, // Adjust based on your auth setup
+          },
+        }
+      );
+      toast.success(response.data.message, {
+        duration: 4000,
+        position: "top-center",
+      });
+   
+      handleReviewSubmitted(); // Refresh bookings after cancellation
+      
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to cancel booking. Please try again.",
+        {
+          duration: 4000,
+          position: "top-center",
+        }
+      );
+    } finally {
+      setIsCancelling(false);
+      setShowCancelModal(false); // Close the modal
+    }
+  };
 
   const statusConfig = {
     upcoming: { color: "bg-blue-100 text-blue-800", label: "Upcoming" },
@@ -50,13 +88,14 @@ const BookingCard = ({
 
   return (
     <div className="mb-8 transition-transform duration-200">
+      <Toaster />
       <div className="flex flex-col bg-white border-2 border-gray-200 rounded-xl md:flex-row hover:shadow-lg transition-shadow">
         {/* Image Section */}
-        <div className="relative md:w-1/3 overflow-hidden rounded-t-xl md:rounded-l-xl md:rounded-tr-none">
+        <div className="relative md:w-1/3 overflow-hidden rounded-t-xl md:rounded-l-xl md:rounded-tr-none h-[200px] md:h-[300px]">
           <img
             src={`http://localhost:8000/${image}`}
             alt={`${title} property`}
-            className="w-full h-48 md:h-full object-cover"
+            className="w-full h-full object-cover"
             onError={handleImageError}
           />
           {rating && (
@@ -137,15 +176,27 @@ const BookingCard = ({
                 >
                   View Details
                 </button>
+                {status === "upcoming" && (
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    disabled={isCancelling}
+                    className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                      isCancelling
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-red-200"
+                    }`}
+                    aria-label={`Cancel ${title} booking`}
+                  >
+                    {isCancelling ? "Cancelling..." : "Cancel Booking"}
+                  </button>
+                )}
                 {isReviewPage && (
-                  <>
-                    <button
-                      onClick={() => setShowModal(true)}
-                      className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-200 transition-colors"
-                    >
-                      Write Review
-                    </button>
-                  </>
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-200 transition-colors"
+                  >
+                    Write Review
+                  </button>
                 )}
               </div>
             </div>
@@ -161,24 +212,18 @@ const BookingCard = ({
           onReviewSubmitted={handleReviewSubmitted}
         />
       )}
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        title="Cancel Booking"
+        message="Are you sure you want to cancel this booking? This action cannot be undone."
+        onConfirm={handleCancelBooking}
+        onCancel={() => setShowCancelModal(false)}
+        isDeleting={isCancelling}
+      />
     </div>
   );
 };
 
-BookingCard.propTypes = {
-  bookingId: PropTypes.string.isRequired,
-  title: PropTypes.string.isRequired,
-  image: PropTypes.string.isRequired,
-  city: PropTypes.string.isRequired,
-  street: PropTypes.string.isRequired,
-  checkIn: PropTypes.string.isRequired,
-  checkOut: PropTypes.string.isRequired,
-  guests: PropTypes.number.isRequired,
-  status: PropTypes.oneOf(["upcoming", "completed", "cancelled", "active"])
-    .isRequired,
-  price: PropTypes.string,
-  rating: PropTypes.number,
-  isReviewPage: PropTypes.bool, // Add new prop to PropTypes
-};
+
 
 export default BookingCard;

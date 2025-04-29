@@ -4,18 +4,18 @@ import moment from "moment";
 const GuestCard = ({ reservation, category }) => {
   // Status styling configuration
   const statusStyles = {
-    "Checking Out": "bg-orange-100 text-orange-800",
-    "Current Guest": "bg-green-100 text-green-800",
-    "Arriving Soon": "bg-blue-100 text-blue-800",
-    Upcoming: "bg-gray-100 text-gray-800",
-    Completed: "bg-green-100 text-green-800 ",
+    "Checking Out": "bg-orange-100 text-orange-800 font-semibold",
+    "Current Guest": "bg-green-100 text-green-800 font-semibold",
+    "Arriving Soon": "bg-blue-100 text-blue-800 font-semibold",
+    Upcoming: "bg-gray-100 text-gray-800 font-semibold",
+    Completed: "bg-green-100 text-green-800 font-semibold",
   };
 
   return (
     <div className="relative bg-white rounded-md shadow-sm border hover:shadow-md transition-shadow">
       <div className="flex flex-col md:flex-row p-3 gap-3">
         {/* Property Image */}
-        <div className="w-full md:w-1/4 rounded-md overflow-hidden">
+        <div className="w-full md:w-1/4 rounded-md overflow-hidden h-[200px]">
           <img
             src={
               `http://localhost:8000/${reservation.propertyId.images[0]}` ||
@@ -30,9 +30,11 @@ const GuestCard = ({ reservation, category }) => {
         <div className="flex-1 flex flex-col gap-1.5 space-y-1">
           {/* Status Badge */}
           <span
-            className={`absolute top-2 right-2 px-2 py-0.5 text-xs rounded-full ${statusStyles[category]}`}
+            className={`absolute top-2 right-2 px-3 py-1 text-sm rounded-full shadow-sm ${
+              statusStyles[category]
+            }`}
           >
-            {category}
+            {category === "All" ? reservation.status : category}
           </span>
 
           {/* Property Info */}
@@ -47,7 +49,10 @@ const GuestCard = ({ reservation, category }) => {
           {/* Guest Info */}
           <div className="flex items-center gap-2 mt-1">
             <img
-              src={reservation.userId.photo || "/default-avatar.png"}
+              src={
+                `http://localhost:8000/${reservation.userId.profileImage}` ||
+                "/default-avatar.png"
+              }
               alt={reservation.userId.name}
               className="w-8 h-8 rounded-full object-cover"
             />

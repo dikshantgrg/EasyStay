@@ -77,7 +77,7 @@ const SearchBar = ({
         <div className="relative">
           <Label
             htmlFor="destination"
-            className="absolute top-1 left-8 bg-white px-1 text-sm font-medium text-gray-500"
+            className="absolute top-1 left-8 px-1 text-sm font-medium text-gray-500"
           >
             Destination
           </Label>
@@ -88,7 +88,7 @@ const SearchBar = ({
             placeholder="Where are you going?"
             value={destination || ""}
             onChange={(e) => setDestination(e.target.value)}
-            className=" pl-9 pt-4 h-14  rounded-xl  text-2xl focus-visible:ring-offset-0"
+            className=" pl-9 pt-4 h-14  rounded-xl  text-2xl "
           />
         </div>
       </div>

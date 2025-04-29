@@ -2,13 +2,20 @@ import React, { useEffect, useState } from "react";
 import Footer from "../../User/Components/Footer";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import GuestCard from "../Components/Guestcard"; // Make sure to create this component
-import moment from "moment";
+import GuestCard from "../Components/Guestcard";
+import { useDispatch, useSelector } from "react-redux";
 
 const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState("Checking Out");
   const [reservations, setReservations] = useState([]);
+  const [stats, setStats] = useState({
+    totalProperties: 0,
+    totalBookings: 0,
+    completedBookings: 0,
+    totalEarnings: 0,
+  });
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const categories = [
     "Checking Out",
     "Current Guest",
@@ -17,16 +24,9 @@ const Dashboard = () => {
     "Completed",
   ];
 
-  // Category mapping for API response keys
-  const categoryMap = {
-    Completed: "completed",
-    "Checking Out": "checkingOut",
-    "Current Guest": "currentGuest",
-    "Arriving Soon": "arrivingSoon",
-    Upcoming: "upcoming",
-  };
+  const user = useSelector((state) => state.user.user);
 
-  const fetchReservations = async (category ) => {
+  const fetchReservations = async (category) => {
     try {
       setLoading(true);
       const response = await axios.get(
@@ -35,15 +35,38 @@ const Dashboard = () => {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
+          
+            params: {
+              limit: 5,
+          }
         }
       );
-      console.log(response);
-      const categoryKey = categoryMap[category];
-      setReservations(response.data.data[categoryKey] || []);
+      setReservations(response.data.data || []);
     } catch (error) {
       console.error("Error fetching reservations:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDashboardStats = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await axios.get(
+        "http://localhost:8000/api/host/dashboard-stats",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      console.log("Dashboard Stats:", response);
+      
+      setStats(response.data.data);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -54,16 +77,17 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchReservations(selectedCategory);
+    fetchDashboardStats();
   }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-10 flex-1 w-full">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 ">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              Welcome back, Host!
+              Welcome back, {user.FirstName}!
             </h1>
             <p className="text-gray-500 mt-2">
               Manage your listings and reservations
@@ -77,6 +101,51 @@ const Dashboard = () => {
           </Link>
         </div>
 
+        {/* Stats Section */}
+        <div className="mb-8">
+        
+          {statsLoading ? (
+            <div className="flex justify-center items-center h-24">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  Total Properties
+                </h3>
+                <p className="text-3xl font-bold text-blue-600">
+                  {stats.totalProperties}
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  Total Bookings
+                </h3>
+                <p className="text-3xl font-bold text-blue-600">
+                  {stats.totalBookings}
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  Completed Bookings
+                </h3>
+                <p className="text-3xl font-bold text-blue-600">
+                  {stats.completedBookings}
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  Total Earnings
+                </h3>
+                <p className="text-3xl font-bold text-blue-600">
+                  Rs {stats.totalEarnings.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Reservation Section */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
@@ -88,7 +157,7 @@ const Dashboard = () => {
               {categories.map((status) => (
                 <li key={status}>
                   <button
-                    className={`flex items-center gap-2 font-medium border border-gray-600  px-5 py-2.5 rounded-full transition-colors duration-200 ${
+                    className={`flex items-center gap-2 font-medium border border-gray-600 px-5 py-2.5 rounded-full transition-colors duration-200 ${
                       selectedCategory === status
                         ? "bg-blue-600 text-white shadow-md"
                         : "text-gray-500 hover:bg-gray-100"
@@ -103,7 +172,7 @@ const Dashboard = () => {
           </div>
 
           {/* Content Area */}
-          <div className="mt-8 min-h-[400px] rounded-xl ">
+          <div className="mt-8 min-h-[400px] rounded-xl">
             {loading ? (
               <div className="flex justify-center items-center h-full">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>

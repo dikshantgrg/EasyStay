@@ -4,6 +4,11 @@ const { ADMIN, HOST, USER } = require("../Constants/User");
 const Schema = mongoose.Schema;
 
 const UserSchema = new Schema({
+  UserId: {
+    type: String,
+    unique: true,
+    required: true,
+  },
   FirstName: {
     type: String,
     required: true,
@@ -29,7 +34,7 @@ const UserSchema = new Schema({
         }
         return true;
       },
-      message: "email already used",
+      message: "Email already exist",
     },
   },
 
@@ -55,7 +60,7 @@ const UserSchema = new Schema({
     trim: true,
   },
 
-  hostApprovalStatus: {
+  IdVerfication: {
     type: String,
     enum: ["pending", "approved", "rejected"],
   },
@@ -67,7 +72,7 @@ const UserSchema = new Schema({
   govtId: {
     type: {
       type: String,
-      enum: ["driverLicense", "passport", "citizenship", "other"],
+      enum: ["driverLicense", "passport", "citizenship"],
       required: false,
     },
 

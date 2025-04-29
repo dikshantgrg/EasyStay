@@ -195,54 +195,11 @@ const BookingDetails = () => {
               </div>
             </div>
 
-            {/* Actions */}
-            {/* <div className="bg-white p-6 rounded-xl shadow-sm">
-              <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <FiMessageSquare className="mr-2" /> Actions
-              </h2>
-              <div className="space-y-3">
-                <button className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  Contact Host
-                </button>
-                <button className="w-full py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Modify Booking
-                </button>
-                <button className="w-full py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Request Cancellation
-                </button>
-              </div>
-            </div> */}
-
-            {/* Special Requests */}
-            {/* {booking.specialRequests && (
-              <div className="bg-white p-6 rounded-xl shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">Special Requests</h2>
-                <p className="text-gray-600">{booking.specialRequests}</p>
-              </div>
-            )} */}
+         
           </div>
         </div>
 
-        {/* Amenities & Rules */}
-        {/* <div className="mt-8 bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">Amenities & Rules</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium mb-2">Amenities</h3>
-              <ul className="list-disc pl-5 space-y-2">
-                {booking.property.amenities.map((amenity, index) => (
-                  <li key={index} className="text-gray-600">
-                    {amenity}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">Important Rules</h3>
-              <p className="text-gray-600">{booking.property.rules}</p>
-            </div>
-          </div>
-        </div> */}
+     
       </div>
     </div>
   );

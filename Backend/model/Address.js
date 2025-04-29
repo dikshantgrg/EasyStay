@@ -13,10 +13,10 @@ const AddressSchema = new Schema({
     required: true,
     trim: true,
   },
-  province_id: {
-    type: Number, 
+  province_name: {
+    type: String, 
     required: true,
-    ref: "Province", 
+   
   },
   zipCode: {
     type: String,

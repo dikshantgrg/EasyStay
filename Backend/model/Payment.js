@@ -3,9 +3,14 @@ const Schema = mongoose.Schema;
 const ObjectId = mongoose.Schema.ObjectId;
 
 const PaymentSchema = new Schema({
+  paymentId: {
+    type: String,
+    unique: true,
+    required: true,
+  },
   bookingId: {
     type: String,
-    ref: "Booking", // References the bookingId field in Booking
+    ref: "Booking", 
     required: true,
   },
   userId: {

@@ -4,6 +4,11 @@ const Schema = mongoose.Schema;
 const ObjectId = mongoose.Schema.ObjectId;
 
 const reviewSchema = new Schema({
+  reviewId: {
+    type: String,
+    unique: true,
+    required: true,
+  },
   bookingId: {
     type: ObjectId,
     ref: "Booking",
@@ -23,13 +28,9 @@ const reviewSchema = new Schema({
     type: Number,
     required: true,
     min: 0,
-    max: 5
+    max: 5,
   },
-  title: {
-    type: String,
-    required: true,
-    maxlength: 100,
-  },
+
   reviewText: {
     type: String,
     maxlength: 1000,

@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { toast, Toaster } from "react-hot-toast";
 import Step1 from "./Step1";
 import Step2 from "./Step2";
 import Step3 from "./Step3";
 import Step4 from "./Step4";
 import Step5 from "./Step5";
-import Step6 from "./Step6"; // Now Government ID
-import Step7 from "./Step7"; // New Amenities step
+import Step6 from "./Step6";
+import Step7 from "./Step7";
 import axios from "axios";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -16,15 +17,16 @@ const MultiForm = () => {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
   const [direction, setDirection] = useState("next");
-  const totalSteps = isBecomeAHost ? 7 : 6; // Updated to 7 for become-a-host
+  const totalSteps = isBecomeAHost ? 7 : 6;
   const [errors, setErrors] = useState({});
+  const [propertyTypes, setPropertyTypes] = useState([]); // New state for property types
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     price: 0,
     street: "",
     city: "",
-    province_id: "",
+    province_name: "",
     zipCode: "",
     maxGuest: 1,
     bedrooms: 0,
@@ -35,7 +37,32 @@ const MultiForm = () => {
     longitude: 0,
     amenities: [],
     govtId: { type: "", front: null, back: null },
+    property_type_id: "", // Added property_type_id
   });
+
+  // Fetch property types
+  const fetchPropertyTypes = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:8000/api/get/property-type",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      console.log("Property types response:", response.data);
+      setPropertyTypes(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Error details:", error.response || error);
+
+      setPropertyTypes([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchPropertyTypes();
+  }, []);
 
   const validateStep = (currentStep) => {
     let newErrors = {};
@@ -55,6 +82,9 @@ const MultiForm = () => {
         if (!formData.price || formData.price <= 0) {
           newErrors.price = "Price must be greater than 0";
         }
+        if (!formData.property_type_id) {
+          newErrors.property_type_id = "Please select a property type";
+        }
         break;
 
       case 2: // Step 2: Location (address)
@@ -64,8 +94,8 @@ const MultiForm = () => {
         if (!formData.city.trim()) {
           newErrors.city = "City is required";
         }
-        if (!formData.province_id) {
-          newErrors.province_id = "Please select a province";
+        if (!formData.province_name) {
+          newErrors.province_name = "Please select a province";
         }
         if (!formData.zipCode.trim()) {
           newErrors.zipCode = "ZIP/Postal Code is required";
@@ -110,13 +140,12 @@ const MultiForm = () => {
         }
         break;
 
-      case 6: // Step 6: Amenities (new step)
+      case 6: // Step 6: Amenities
         if (formData.amenities.length === 0) {
           newErrors.amenities = "Please select at least one amenity";
         }
         break;
 
-      case 7: // Step 7: Government ID (only for become-a-host, shifted from Step 6)
         if (isBecomeAHost) {
           if (!formData.govtId.type) {
             newErrors.govtId_type = "Please select an ID type";
@@ -125,7 +154,8 @@ const MultiForm = () => {
             newErrors.govtId_front = "Front image of ID is required";
           }
           if (formData.govtId.type === "citizenship" && !formData.govtId.back) {
-            newErrors.govtId_back = "Back image of citizenship card is required";
+            newErrors.govtId_back =
+              "Back image of citizenship card is required";
           }
         }
         break;
@@ -140,7 +170,7 @@ const MultiForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     for (let i = 1; i <= totalSteps; i++) {
       if (!validateStep(i)) {
         setStep(i);
@@ -154,7 +184,7 @@ const MultiForm = () => {
     data.append("price", formData.price);
     data.append("street", formData.street);
     data.append("city", formData.city);
-    data.append("province_id", formData.province_id);
+    data.append("province_name", formData.province_name);
     data.append("zipCode", formData.zipCode);
     data.append("maxGuest", formData.maxGuest);
     data.append("bedrooms", formData.bedrooms);
@@ -162,7 +192,10 @@ const MultiForm = () => {
     data.append("kitchen", formData.kitchen);
     data.append("latitude", formData.latitude);
     data.append("longitude", formData.longitude);
-    formData.amenities.forEach((amenity) => data.append("amenities[]", amenity));
+    data.append("property_type_id", formData.property_type_id); // Added property_type_id
+    formData.amenities.forEach((amenity) =>
+      data.append("amenities[]", amenity)
+    );
     formData.images.forEach((image) => data.append("images", image));
     data.append("govtId_type", formData.govtId.type);
     if (formData.govtId.front) {
@@ -172,33 +205,31 @@ const MultiForm = () => {
       data.append("govtId_back", formData.govtId.back);
     }
 
-    const apiEndpoint = isBecomeAHost
-      ? "http://localhost:8000/api/become-a-host"
-      : "http://localhost:8000/api/properties";
-
     try {
-      const response = await axios.post(apiEndpoint, data, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await axios.post(
+        "http://localhost:8000/api/properties",
+        data,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       if (response.status === 201) {
-        if (isBecomeAHost) {
-          navigate("/");
-          alert("Success! Wait for approval");
-        } else {
-          alert("Success!");
+        toast.success("Property has been added successfully!");
+        setTimeout(() => {
           navigate("/hosting/property");
-        }
-      } else {
-        alert("There was an error while adding product");
-        console.log(response);
+        }, 1000); // 2 seconds delay
       }
     } catch (error) {
-      console.error("Error during form submission:", error.response?.data || error.message);
-      alert("Submission failed. Please check your input and try again.");
+      toast.error("There was an error while adding the property");
+      console.log(response);
+      console.error(
+        "Error during form submission:",
+        error.response?.data || error.message
+      );
     }
   };
 
@@ -229,29 +260,52 @@ const MultiForm = () => {
 
   return (
     <div className="max-h-full pb-20">
+      <Toaster position="top-center" reverseOrder={false} />
       <form onSubmit={handleSubmit}>
         <div className="max-w-3xl mx-auto pt-4 px-4 sm:px-6 lg:px-8">
           <div className={`transition-transform duration-300 ease-in-out`}>
             {step === 1 && (
-              <Step1 formData={formData} handleChange={handleChange} errors={errors} />
+              <Step1
+                formData={formData}
+                handleChange={handleChange}
+                errors={errors}
+                propertyTypes={propertyTypes} // Pass propertyTypes
+              />
             )}
             {step === 2 && (
-              <Step2 formData={formData} handleChange={handleChange} errors={errors} />
+              <Step2
+                formData={formData}
+                handleChange={handleChange}
+                errors={errors}
+              />
             )}
             {step === 3 && (
-              <Step3 formData={formData} handleChange={handleChange} errors={errors} />
+              <Step3
+                formData={formData}
+                handleChange={handleChange}
+                errors={errors}
+              />
             )}
             {step === 4 && (
-              <Step4 formData={formData} handleChange={handleChange} errors={errors} />
+              <Step4
+                formData={formData}
+                handleChange={handleChange}
+                errors={errors}
+              />
             )}
             {step === 5 && (
-              <Step5 formData={formData} handleChange={handleChange} errors={errors} />
+              <Step5
+                formData={formData}
+                handleChange={handleChange}
+                errors={errors}
+              />
             )}
             {step === 6 && (
-              <Step6 formData={formData} handleChange={handleChange} errors={errors} />
-            )}
-            {isBecomeAHost && step === 7 && (
-              <Step7 formData={formData} handleChange={handleChange} errors={errors} />
+              <Step6
+                formData={formData}
+                handleChange={handleChange}
+                errors={errors}
+              />
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { IoMdStar } from "react-icons/io";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 const RateAndReviewModal = ({
   onClose,
@@ -11,7 +12,7 @@ const RateAndReviewModal = ({
 }) => {
   const [formData, setFormData] = useState({
     rating: 0,
-    title: "",
+
     reviewText: "", // Consistent naming
   });
   const [hover, setHover] = useState(0);
@@ -26,7 +27,7 @@ const RateAndReviewModal = ({
   const validateForm = () => {
     const newErrors = {};
     if (formData.rating === 0) newErrors.rating = "Please select a rating";
-    if (!formData.title.trim()) newErrors.title = "Please enter a title";
+
     if (!formData.reviewText.trim())
       newErrors.reviewText = "Please write a review"; // Match formData key
     setErrors(newErrors);
@@ -42,7 +43,7 @@ const RateAndReviewModal = ({
       const reviewData = {
         ...formData,
         hostId,
-        bookingId: id, // Use 'id' as bookingId
+        bookingId: id,
         propertyId,
       };
 
@@ -58,9 +59,9 @@ const RateAndReviewModal = ({
       );
 
       console.log("API response:", response.data);
-
+      toast.success("Review submitted successfully!");
       setShowSuccess(true);
-      setFormData({ rating: 0, title: "", reviewText: "" }); // Match formData key
+      setFormData({ rating: 0, reviewText: "" });
       setErrors({});
       if (onReviewSubmitted) {
         onReviewSubmitted();
@@ -70,6 +71,7 @@ const RateAndReviewModal = ({
       }, 2000);
     } catch (error) {
       console.error("Error submitting review:", error);
+      toast.error(error.response?.data?.message || "Failed to submit review. Please try again.");
       setErrors({
         submit:
           error.response?.data?.message ||
@@ -89,7 +91,7 @@ const RateAndReviewModal = ({
     setErrors((prev) => {
       const newErrors = { ...prev };
       if (field === "rating" && value > 0) delete newErrors.rating;
-      if (field === "title" && value.trim()) delete newErrors.title;
+
       if (field === "reviewText" && value.trim()) delete newErrors.reviewText; // Match formData key
       return newErrors;
     });
@@ -162,28 +164,9 @@ const RateAndReviewModal = ({
               )}
             </div>
 
-            <div>
-              <label
-                htmlFor="reviewTitle"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Title
-              </label>
-              <input
-                id="reviewTitle"
-                type="text"
-                value={formData.title}
-                onChange={handleInputChange("title")}
-                className={`w-full px-3 py-2.5 border rounded-lg text-gray-900 placeholder-gray-400
-                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all
-                  ${errors.title ? "border-red-400" : "border-gray-200"}`}
-                placeholder="Summarize your experience"
-                disabled={isSubmitting}
-              />
-              {errors.title && (
-                <p className="text-red-500 text-xs mt-1.5">{errors.title}</p>
-              )}
-            </div>
+          
+            
+              
 
             <div>
               <label
